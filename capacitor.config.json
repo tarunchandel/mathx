@@ -1,0 +1,14 @@
+{
+  "appId": "com.mathx.mastermind",
+  "appName": "MathX",
+  "webDir": "dist",
+  "server": {
+    "androidScheme": "https"
+  },
+  "plugins": {
+    "StatusBar": {
+      "style": "DARK",
+      "backgroundColor": "#060612"
+    }
+  }
+}
