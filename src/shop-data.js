@@ -163,6 +163,42 @@ const SHOP_CATEGORIES = {
         currency: 'coins',
         themeId: 'lover',
       },
+      {
+        id: 'neonPulseDark',
+        name: 'Neon Pulse (Dark)',
+        emoji: '⚡',
+        description: 'Blistering cyan and magenta on pure black. High contrast.',
+        price: 6000,
+        currency: 'coins',
+        themeId: 'neonPulseDark',
+      },
+      {
+        id: 'neonPulseLight',
+        name: 'Neon Pulse (Light)',
+        emoji: '💡',
+        description: 'Blistering cyan and magenta on bright white. Retina burning.',
+        price: 6000,
+        currency: 'coins',
+        themeId: 'neonPulseLight',
+      },
+      {
+        id: 'venomDark',
+        name: 'Toxic Venom (Dark)',
+        emoji: '🐍',
+        description: 'High-saturation acid green and toxic purple in the void.',
+        price: 6500,
+        currency: 'coins',
+        themeId: 'venomDark',
+      },
+      {
+        id: 'venomLight',
+        name: 'Toxic Venom (Light)',
+        emoji: '🧪',
+        description: 'High-saturation acid green and toxic purple on daylight.',
+        price: 6500,
+        currency: 'coins',
+        themeId: 'venomLight',
+      }
     ]
   },
   status: {

@@ -252,6 +252,110 @@
   animation: pulseBg 8s infinite alternate;
 }
 
+[data-theme="neonPulseDark"] {
+  --bg-primary: #050505;
+  --bg-secondary: #0d0014;
+  --bg-tertiary: #1a0028;
+  --bg-card: rgba(26, 0, 40, 0.85);
+  --text-primary: #ffffff;
+  --text-secondary: rgba(255, 255, 255, 0.8);
+  --text-tertiary: rgba(255, 255, 255, 0.5);
+  --accent-primary: #00ffff;
+  --accent-primary-glow: rgba(0, 255, 255, 0.6);
+  --accent-secondary: #ff00ff;
+  --accent-secondary-glow: rgba(255, 0, 255, 0.6);
+  --gradient-primary: linear-gradient(135deg, #00ffff 0%, #ff00ff 100%);
+  --gradient-bg: linear-gradient(180deg, #050505 0%, #0d0014 50%, #1a0028 100%);
+  --surface-glass: rgba(0, 255, 255, 0.1);
+  --border-subtle: 1px solid rgba(0, 255, 255, 0.3);
+  --font-display: 'Oswald', 'Outfit', sans-serif;
+  font-weight: 800;
+}
+[data-theme="neonPulseDark"] body::before {
+  content: ''; position: fixed; inset: 0; pointer-events: none; z-index: -1;
+  background: 
+    linear-gradient(45deg, rgba(0,255,255,0.05) 25%, transparent 25%, transparent 50%, rgba(255,0,255,0.05) 50%, rgba(255,0,255,0.05) 75%, transparent 75%, transparent);
+  background-size: 60px 60px;
+  animation: barberpole 20s linear infinite;
+}
+
+[data-theme="neonPulseLight"] {
+  --bg-primary: #fafafa;
+  --bg-secondary: #e6faff;
+  --bg-tertiary: #ffe6fa;
+  --bg-card: rgba(255, 255, 255, 0.95);
+  --text-primary: #111111;
+  --text-secondary: rgba(17, 17, 17, 0.8);
+  --text-tertiary: rgba(17, 17, 17, 0.5);
+  --accent-primary: #00cccc;
+  --accent-primary-glow: rgba(0, 204, 204, 0.6);
+  --accent-secondary: #cc00cc;
+  --accent-secondary-glow: rgba(204, 0, 204, 0.6);
+  --gradient-primary: linear-gradient(135deg, #00cccc 0%, #cc00cc 100%);
+  --gradient-bg: linear-gradient(180deg, #fafafa 0%, #e6faff 50%, #ffe6fa 100%);
+  --surface-glass: rgba(0, 204, 204, 0.1);
+  --border-subtle: 1px solid rgba(0, 204, 204, 0.4);
+  --font-display: 'Oswald', 'Outfit', sans-serif;
+  font-weight: 800;
+}
+[data-theme="neonPulseLight"] body::before {
+  content: ''; position: fixed; inset: 0; pointer-events: none; z-index: -1;
+  background: 
+    linear-gradient(45deg, rgba(0,204,204,0.05) 25%, transparent 25%, transparent 50%, rgba(204,0,204,0.05) 50%, rgba(204,0,204,0.05) 75%, transparent 75%, transparent);
+  background-size: 60px 60px;
+  animation: barberpole 20s linear infinite reverse;
+}
+
+[data-theme="venomDark"] {
+  --bg-primary: #050a05;
+  --bg-secondary: #0a140a;
+  --bg-tertiary: #140a14;
+  --bg-card: rgba(10, 20, 10, 0.85);
+  --text-primary: #e0ffe0;
+  --text-secondary: rgba(224, 255, 224, 0.8);
+  --text-tertiary: rgba(224, 255, 224, 0.5);
+  --accent-primary: #39ff14;
+  --accent-primary-glow: rgba(57, 255, 20, 0.6);
+  --accent-secondary: #b300ff;
+  --accent-secondary-glow: rgba(179, 0, 255, 0.6);
+  --gradient-primary: linear-gradient(135deg, #39ff14 0%, #b300ff 100%);
+  --gradient-bg: linear-gradient(180deg, #050a05 0%, #0a140a 50%, #140a14 100%);
+  --surface-glass: rgba(57, 255, 20, 0.1);
+  --border-subtle: 1px solid rgba(57, 255, 20, 0.3);
+  --font-display: 'Oswald', 'Outfit', sans-serif;
+  font-weight: 800;
+}
+[data-theme="venomDark"] body::before {
+  content: ''; position: fixed; inset: 0; pointer-events: none; z-index: -1;
+  background: radial-gradient(circle at 50% 50%, rgba(57, 255, 20, 0.1) 0%, transparent 60%);
+  animation: pulseBg 3s infinite alternate;
+}
+
+[data-theme="venomLight"] {
+  --bg-primary: #f5fdf5;
+  --bg-secondary: #e6ffe6;
+  --bg-tertiary: #f5e6ff;
+  --bg-card: rgba(255, 255, 255, 0.95);
+  --text-primary: #0a200a;
+  --text-secondary: rgba(10, 32, 10, 0.8);
+  --text-tertiary: rgba(10, 32, 10, 0.5);
+  --accent-primary: #00cc00;
+  --accent-primary-glow: rgba(0, 204, 0, 0.6);
+  --accent-secondary: #9900cc;
+  --accent-secondary-glow: rgba(153, 0, 204, 0.6);
+  --gradient-primary: linear-gradient(135deg, #00cc00 0%, #9900cc 100%);
+  --gradient-bg: linear-gradient(180deg, #f5fdf5 0%, #e6ffe6 50%, #f5e6ff 100%);
+  --surface-glass: rgba(0, 204, 0, 0.1);
+  --border-subtle: 1px solid rgba(0, 204, 0, 0.4);
+  --font-display: 'Oswald', 'Outfit', sans-serif;
+  font-weight: 800;
+}
+[data-theme="venomLight"] body::before {
+  content: ''; position: fixed; inset: 0; pointer-events: none; z-index: -1;
+  background: radial-gradient(circle at 50% 50%, rgba(0, 204, 0, 0.15) 0%, transparent 60%);
+  animation: pulseBg 2s infinite alternate-reverse;
+}
+
 @keyframes floatUp { from { background-position: 0 0; } to { background-position: 0 100vh; } }
 @keyframes scanlines { from { background-position: 0 0; } to { background-position: 0 100%; } }
 @keyframes pulseBg { 0% { opacity: 0.7; transform: scale(1); } 100% { opacity: 1; transform: scale(1.05); } }
