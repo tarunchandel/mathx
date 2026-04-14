@@ -163,6 +163,69 @@ const SHOP_CATEGORIES = {
         currency: 'coins',
         themeId: 'lover',
       },
+
+      // ===== VIBRANT COLLECTION (Dual-Mode Dark / Light) =====
+      // Each family ships with a matched Dark + Light variant.
+
+      // --- Aurora: electric violet + teal ---
+      {
+        id: 'auroraDark',
+        name: 'Aurora • Dark',
+        emoji: '🌌',
+        description: 'Electric violet & teal ribbons shimmering across a deep night sky.',
+        price: 4500,
+        currency: 'coins',
+        themeId: 'aurora-dark',
+      },
+      {
+        id: 'auroraLight',
+        name: 'Aurora • Light',
+        emoji: '🌠',
+        description: 'Aurora reimagined at dawn — soft cloud-white with violet & teal highlights.',
+        price: 4500,
+        currency: 'coins',
+        themeId: 'aurora-light',
+      },
+
+      // --- Vaporwave: neon magenta + cyan retro-future ---
+      {
+        id: 'vaporwaveDark',
+        name: 'Vaporwave • Dark',
+        emoji: '🌴',
+        description: 'Hyper-saturated magenta & cyan glow over a midnight grid. Pure 80s energy.',
+        price: 5500,
+        currency: 'coins',
+        themeId: 'vaporwave-dark',
+      },
+      {
+        id: 'vaporwaveLight',
+        name: 'Vaporwave • Light',
+        emoji: '🏝️',
+        description: 'Sun-bleached pastel vaporwave. Cotton-candy magenta & cyan on ivory.',
+        price: 5500,
+        currency: 'coins',
+        themeId: 'vaporwave-light',
+      },
+
+      // --- Citrus: electric lime + tangerine pop ---
+      {
+        id: 'citrusDark',
+        name: 'Citrus • Dark',
+        emoji: '🍊',
+        description: 'Electric lime & tangerine punch against a charcoal backdrop. Zero chill.',
+        price: 4000,
+        currency: 'coins',
+        themeId: 'citrus-dark',
+      },
+      {
+        id: 'citrusLight',
+        name: 'Citrus • Light',
+        emoji: '🍋',
+        description: 'Sunlit lime & tangerine on crisp ivory. Wakes up your whole screen.',
+        price: 4000,
+        currency: 'coins',
+        themeId: 'citrus-light',
+      },
     ]
   },
   status: {
