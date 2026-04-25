@@ -1,67 +1,117 @@
 /**
- * MathX - State Manager
- * Persistent state management using LocalStorage
- * Supports practice progress + sub-level (difficulty) completion tracking
+ * MathX - State Manager (Multi-Profile)
+ *
+ * Storage layout:
+ *   mathx_meta            — { profiles: [...], activeProfileId, version }
+ *   mathx_state_<id>      — per-profile state
+ *
+ * Legacy single-profile saves under "mathx_state" are auto-migrated on load.
  */
 
-const STORAGE_KEY = 'mathx_state';
+const META_KEY = 'mathx_meta';
+const PROFILE_PREFIX = 'mathx_state_';
+const LEGACY_KEY = 'mathx_state';
 
 const DEFAULT_STATE = {
   // Player info
   playerName: 'Maverick',
-  
+
   // Economy
   balance: 0,
   goldenPlectrums: 0,
-  
+
   // Progress
   currentLevel: 1,
   highestLevel: 1,
-  levelStars: {}, // { "1": 3, "2": 2, ... }
-  
-  /**
-   * Practice progress per level per operation
-   * { "1": { "+": 80, "-": 100, "×": 40, "÷": 0 }, ... }
-   * Once all available ops reach 100, sub-levels for that level are unlocked
-   */
+  levelStars: {},
+
   practiceProgress: {},
-  
-  /**
-   * Sub-level completion tracking
-   * { "1": { "chill": true, "vibe": false, "goat": false }, ... }
-   * User must complete all 3 sub-levels to unlock next level
-   */
   subLevelCompleted: {},
-  
+
   // Streak
   streakCount: 0,
   lastPlayDate: null,
   streakRewardCollected: false,
-  
-  // Inventory (owned items)
+
+  // Inventory
   inventory: {
     safetyPins: 0,
     timeWarps: 0,
     greatEscapes: 0,
+    autoSolve: 0,
+    fiftyFifty: 0,
+    crystalBall: 0,
+    hintMaster: 0,
+    shieldWall: 0,
+    doubleOrNothing: 0,
+    phoneAFriend: 0,
+    rewindTime: 0,
+    mirrorMirror: 0,
+    luckyClover: 0,
+    goldRush: 0,
     coffeeBoosts: 0,
     streakFreezes: 0,
+    weekendWarrior: 0,
+    xpExtravaganza: 0,
+    plectrumPower: 0,
+    rocketFuel: 0,
+    energyDrink: 0,
+    morningSun: 0,
+    doubleDip: 0,
+    megaPhone: 0,
+    turboTimer: 0,
+    cloverChain: 0,
+    comboCarnival: 0,
   },
-  
-  // Unlocked themes
+
+  // Pre-quiz selected powerups (id -> 1 chosen for this run)
+  selectedPowerups: {},
+
+  // Themes
   unlockedThemes: ['midnights'],
   currentTheme: 'midnights',
-  
-  // Unlocked status effects
-  holographicName: false,
-  
-  // Sound settings
+
+  // Avatars (unlockedAvatars stores emoji keys)
+  unlockedAvatars: [],
+  currentAvatar: null,
+
+  // Sounds
   enterSound: 'default',
   unlockedSounds: ['default'],
-  
+
+  // Status flags (legacy)
+  holographicName: false,
+  vipStatus: false,
+  goldenAura: false,
+  plectrumGod: false,
+
+  // New status keys (statusKey-driven, see shop-data.js)
+  rainbowAura: false,
+  fireBadge: false,
+  crownOfMath: false,
+  starBurst: false,
+  lightningTrail: false,
+  roboBadge: false,
+  unicornDust: false,
+  galaxyName: false,
+  piPin: false,
+  midnightHalo: false,
+  mastermindTitle: false,
+  cosmicTrail: false,
+  soundPackEpic: false,
+  platinumFrame: false,
+  diamondName: false,
+  plectrum2xPerma: false,
+  lifetimeCoffee: false,
+  rockstarTitle: false,
+  godModeBadge: false,
+  activeStatusBadge: null,
+
   // Active boosts
   coffeeBoostExpiry: null,
+  weekendWarriorExpiry: null,
   streakFreezeActive: false,
-  
+
   // Stats
   totalGamesPlayed: 0,
   totalCorrect: 0,
@@ -70,7 +120,7 @@ const DEFAULT_STATE = {
   totalCoinsEarned: 0,
   perfectSets: 0,
   lucky13Count: 0,
-  
+
   // Daily Challenge
   dailyChallenge: {
     date: null,
@@ -80,27 +130,150 @@ const DEFAULT_STATE = {
     rewardCoins: 1000,
     rewardPlectrums: 10
   },
-  
+
   // Settings
   haptics: true,
   soundEffects: true,
 };
 
+// ---------- Profile Registry ----------
+
+function loadMeta() {
+  try {
+    const raw = localStorage.getItem(META_KEY);
+    if (raw) return JSON.parse(raw);
+  } catch (_) { /* ignore */ }
+  return null;
+}
+
+function saveMeta(meta) {
+  localStorage.setItem(META_KEY, JSON.stringify(meta));
+}
+
+function ensureBootstrapped() {
+  let meta = loadMeta();
+  if (meta && Array.isArray(meta.profiles) && meta.profiles.length > 0) return meta;
+
+  // Migrate legacy single-profile state, if present.
+  let legacyState = null;
+  try {
+    const raw = localStorage.getItem(LEGACY_KEY);
+    if (raw) legacyState = JSON.parse(raw);
+  } catch (_) { /* ignore */ }
+
+  if (legacyState) {
+    const id = 'profile_' + Date.now();
+    const profile = {
+      id,
+      name: legacyState.playerName || 'Maverick',
+      emoji: '🦸',
+      createdAt: Date.now(),
+    };
+    localStorage.setItem(PROFILE_PREFIX + id, JSON.stringify(legacyState));
+    meta = { profiles: [profile], activeProfileId: id, version: 2 };
+    saveMeta(meta);
+    // Keep legacy key as a backup (do not delete to be safe).
+    return meta;
+  }
+
+  // Fresh install: no profiles yet — caller must show profile creation UI.
+  meta = { profiles: [], activeProfileId: null, version: 2 };
+  saveMeta(meta);
+  return meta;
+}
+
 class StateManager {
   constructor() {
-    this.state = this._load();
+    this.meta = ensureBootstrapped();
+    this.state = this._loadActive();
     this.listeners = new Map();
   }
 
-  _load() {
+  // ---------- Profile API ----------
+
+  hasProfile() {
+    return this.meta.profiles.length > 0 && !!this.meta.activeProfileId;
+  }
+
+  getProfiles() {
+    return [...this.meta.profiles];
+  }
+
+  getActiveProfile() {
+    return this.meta.profiles.find(p => p.id === this.meta.activeProfileId) || null;
+  }
+
+  createProfile(name, emoji = '🦸') {
+    const id = 'profile_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7);
+    const profile = { id, name: (name || 'New Player').slice(0, 20), emoji, createdAt: Date.now() };
+    this.meta.profiles.push(profile);
+    this.meta.activeProfileId = id;
+    saveMeta(this.meta);
+
+    const fresh = structuredClone(DEFAULT_STATE);
+    fresh.playerName = profile.name;
+    fresh.currentAvatar = emoji;
+    localStorage.setItem(PROFILE_PREFIX + id, JSON.stringify(fresh));
+    this.state = fresh;
+    this._notifyAll();
+    return profile;
+  }
+
+  switchProfile(id) {
+    if (!this.meta.profiles.find(p => p.id === id)) return false;
+    // persist current state first
+    this._save();
+    this.meta.activeProfileId = id;
+    saveMeta(this.meta);
+    this.state = this._loadActive();
+    this._notifyAll();
+    return true;
+  }
+
+  deleteProfile(id) {
+    if (this.meta.profiles.length <= 1) return false; // never leave zero profiles
+    this.meta.profiles = this.meta.profiles.filter(p => p.id !== id);
+    localStorage.removeItem(PROFILE_PREFIX + id);
+    if (this.meta.activeProfileId === id) {
+      this.meta.activeProfileId = this.meta.profiles[0].id;
+      this.state = this._loadActive();
+      this._notifyAll();
+    }
+    saveMeta(this.meta);
+    return true;
+  }
+
+  renameProfile(id, name, emoji) {
+    const p = this.meta.profiles.find(x => x.id === id);
+    if (!p) return false;
+    if (name) p.name = name.slice(0, 20);
+    if (emoji) p.emoji = emoji;
+    saveMeta(this.meta);
+    if (id === this.meta.activeProfileId) {
+      if (name) { this.state.playerName = p.name; }
+      if (emoji) { this.state.currentAvatar = emoji; }
+      this._save();
+      this._notify('playerName', this.state.playerName);
+      this._notify('currentAvatar', this.state.currentAvatar);
+    }
+    return true;
+  }
+
+  // ---------- Internal storage ----------
+
+  _activeKey() {
+    return PROFILE_PREFIX + this.meta.activeProfileId;
+  }
+
+  _loadActive() {
+    if (!this.meta.activeProfileId) return structuredClone(DEFAULT_STATE);
     try {
-      const saved = localStorage.getItem(STORAGE_KEY);
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        return this._deepMerge(structuredClone(DEFAULT_STATE), parsed);
+      const raw = localStorage.getItem(this._activeKey());
+      if (raw) {
+        return this._deepMerge(structuredClone(DEFAULT_STATE), JSON.parse(raw));
       }
     } catch (e) {
-      console.warn('Failed to load state:', e);
+      console.warn('Failed to load profile state:', e);
     }
     return structuredClone(DEFAULT_STATE);
   }
@@ -117,16 +290,21 @@ class StateManager {
   }
 
   _save() {
+    if (!this.meta.activeProfileId) return;
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(this.state));
+      localStorage.setItem(this._activeKey(), JSON.stringify(this.state));
     } catch (e) {
       console.warn('Failed to save state:', e);
     }
   }
 
-  get(key) {
-    return this.state[key];
+  _notifyAll() {
+    for (const key of Object.keys(this.state)) this._notify(key, this.state[key]);
   }
+
+  // ---------- Generic getters/setters ----------
+
+  get(key) { return this.state[key]; }
 
   set(key, value) {
     this.state[key] = value;
@@ -137,9 +315,7 @@ class StateManager {
   update(updates) {
     Object.assign(this.state, updates);
     this._save();
-    for (const key of Object.keys(updates)) {
-      this._notify(key, updates[key]);
-    }
+    for (const key of Object.keys(updates)) this._notify(key, updates[key]);
   }
 
   addCoins(amount) {
@@ -166,11 +342,11 @@ class StateManager {
   }
 
   addItem(itemKey, count = 1) {
-    if (this.state.inventory[itemKey] !== undefined) {
-      this.state.inventory[itemKey] += count;
-      this._save();
-      this._notify('inventory', this.state.inventory);
-    }
+    if (!this.state.inventory) this.state.inventory = {};
+    if (this.state.inventory[itemKey] === undefined) this.state.inventory[itemKey] = 0;
+    this.state.inventory[itemKey] += count;
+    this._save();
+    this._notify('inventory', this.state.inventory);
   }
 
   useItem(itemKey) {
@@ -183,104 +359,56 @@ class StateManager {
     return false;
   }
 
-  // ==============================
-  // PRACTICE PROGRESS
-  // ==============================
-
-  /**
-   * Get practice points for a level + operation
-   */
+  // Practice progress
   getPracticePoints(level, op) {
     const prog = this.state.practiceProgress[String(level)];
     if (!prog) return 0;
     return prog[op] || 0;
   }
 
-  /**
-   * Add practice points for a level + operation
-   */
   addPracticePoints(level, op, points) {
-    if (!this.state.practiceProgress[String(level)]) {
-      this.state.practiceProgress[String(level)] = {};
-    }
+    if (!this.state.practiceProgress[String(level)]) this.state.practiceProgress[String(level)] = {};
     const current = this.state.practiceProgress[String(level)][op] || 0;
     this.state.practiceProgress[String(level)][op] = Math.min(current + points, 100);
     this._save();
     this._notify('practiceProgress', this.state.practiceProgress);
   }
 
-  /**
-   * Check if practice is complete for all operations at a level
-   * (all available ops have >= 100 points)
-   */
   isPracticeComplete(level, availableOps) {
     const prog = this.state.practiceProgress[String(level)];
     if (!prog) return false;
     return availableOps.every(op => (prog[op] || 0) >= 100);
   }
 
-  /**
-   * Are sub-levels (quizzes) unlocked for this level?
-   */
-  areSubLevelsUnlocked(level, availableOps) {
-    return this.isPracticeComplete(level, availableOps);
-  }
+  areSubLevelsUnlocked(level, availableOps) { return this.isPracticeComplete(level, availableOps); }
 
-  // ==============================
-  // SUB-LEVEL COMPLETION
-  // ==============================
-
-  /**
-   * Mark a sub-level as completed
-   */
   completeSubLevel(level, difficulty) {
-    if (!this.state.subLevelCompleted[String(level)]) {
-      this.state.subLevelCompleted[String(level)] = {};
-    }
+    if (!this.state.subLevelCompleted[String(level)]) this.state.subLevelCompleted[String(level)] = {};
     this.state.subLevelCompleted[String(level)][difficulty] = true;
     this._save();
     this._notify('subLevelCompleted', this.state.subLevelCompleted);
   }
 
-  /**
-   * Check if a specific sub-level is completed
-   */
   isSubLevelCompleted(level, difficulty) {
     const sub = this.state.subLevelCompleted[String(level)];
-    if (!sub) return false;
-    return !!sub[difficulty];
+    return sub ? !!sub[difficulty] : false;
   }
 
-  /**
-   * Check if all 3 sub-levels are completed for a level
-   */
   areAllSubLevelsCompleted(level) {
     const sub = this.state.subLevelCompleted[String(level)];
     if (!sub) return false;
-    return !!sub['chill'] && !!sub['vibe'] && !!sub['goat'];
+    return !!sub.chill && !!sub.vibe && !!sub.goat;
   }
 
-  /**
-   * Can the user access the next level?
-   * They must have all 3 sub-levels completed at the current level
-   */
   canAccessLevel(level) {
     if (level === 1) return true;
     return this.areAllSubLevelsCompleted(level - 1);
   }
 
-  /**
-   * Recalculate the current level based on sub-level completions
-   * This updates currentLevel to the highest accessible level
-   */
   recalculateCurrentLevel() {
     let maxLevel = 1;
     for (let lvl = 1; lvl <= 10; lvl++) {
-      if (this.canAccessLevel(lvl)) {
-        maxLevel = lvl;
-      } else {
-        break;
-      }
+      if (this.canAccessLevel(lvl)) maxLevel = lvl; else break;
     }
     if (maxLevel !== this.state.currentLevel) {
       this.state.currentLevel = maxLevel;
@@ -291,11 +419,10 @@ class StateManager {
     return maxLevel;
   }
 
-  // ==============================
-  // STATUS / TITLES
-  // ==============================
-
   getStatusTitle() {
+    if (this.state.mastermindTitle && this.state.activeStatusBadge === 'mastermindTitle') return 'Mastermind';
+    if (this.state.rockstarTitle && this.state.activeStatusBadge === 'rockstarTitle') return 'Rockstar';
+    if (this.state.plectrumGod) return 'Plectrum God';
     const level = this.state.currentLevel;
     if (level <= 2) return 'The Penny';
     if (level <= 5) return 'Intern';
@@ -305,6 +432,7 @@ class StateManager {
   }
 
   getStatusEmoji() {
+    if (this.state.currentAvatar) return this.state.currentAvatar;
     const level = this.state.currentLevel;
     if (level <= 2) return '🪙';
     if (level <= 5) return '💼';
@@ -314,9 +442,7 @@ class StateManager {
   }
 
   on(key, callback) {
-    if (!this.listeners.has(key)) {
-      this.listeners.set(key, []);
-    }
+    if (!this.listeners.has(key)) this.listeners.set(key, []);
     this.listeners.get(key).push(callback);
   }
 
@@ -329,56 +455,29 @@ class StateManager {
   }
 
   _notify(key, value) {
-    if (this.listeners.has(key)) {
-      this.listeners.get(key).forEach(cb => cb(value));
-    }
+    if (this.listeners.has(key)) this.listeners.get(key).forEach(cb => cb(value));
   }
 
-  // Check and update daily streak
+  // Streak
   checkStreak() {
     const today = new Date().toDateString();
     const lastPlay = this.state.lastPlayDate;
-    
     if (!lastPlay) {
       this.update({ streakCount: 1, lastPlayDate: today, streakRewardCollected: false });
       return;
     }
-    
-    if (lastPlay === today) {
-      return;
-    }
-    
-    const lastDate = new Date(lastPlay);
-    const todayDate = new Date(today);
-    const diffDays = Math.round((todayDate - lastDate) / (1000 * 60 * 60 * 24));
-    
-    if (diffDays === 1) {
-      if (this.state.streakCount > 0 && lastPlay === today) {
-         // Should not trigger as we checked if lastPlay === today above, but just in case
-      }
-    } else if (diffDays > 1) {
-      if (this.state.streakFreezeActive) {
-        this.update({
-          streakFreezeActive: false,
-        });
-      } else {
-        this.update({
-          streakCount: 0,
-          streakRewardCollected: false,
-        });
-      }
+    if (lastPlay === today) return;
+    const diffDays = Math.round((new Date(today) - new Date(lastPlay)) / 86400000);
+    if (diffDays > 1) {
+      if (this.state.streakFreezeActive) this.update({ streakFreezeActive: false });
+      else this.update({ streakCount: 0, streakRewardCollected: false });
     }
   }
 
-  // We increase the streak explicitly via playing a game, not just by opening app.
   incrementStreak() {
     const today = new Date().toDateString();
     let { streakCount, lastPlayDate, bestStreak } = this.state;
-    
-    // If they already increased today, do nothing.
     if (lastPlayDate === today && streakCount > 0) return false;
-
-    // Otherwise, increment it.
     const newStreak = streakCount + 1;
     this.update({
       streakCount: newStreak,
@@ -388,18 +487,14 @@ class StateManager {
     });
     return true;
   }
-  
-  // --- Daily Challenge ---
+
+  // Daily Challenge
   checkDailyChallenge() {
     const today = new Date().toDateString();
     if (this.state.dailyChallenge.date !== today) {
       this.state.dailyChallenge = {
-        date: today,
-        progress: 0,
-        target: 3, // Complete 3 sets
-        rewardClaimed: false,
-        rewardCoins: 1000,
-        rewardPlectrums: 10
+        date: today, progress: 0, target: 3,
+        rewardClaimed: false, rewardCoins: 1000, rewardPlectrums: 10
       };
       this._save();
       this._notify('dailyChallenge', this.state.dailyChallenge);
@@ -431,8 +526,7 @@ class StateManager {
 
   getStreakReward() {
     const streak = this.state.streakCount;
-    const reward = Math.min(Math.pow(2, streak), 10000);
-    return reward;
+    return Math.min(Math.pow(2, streak), 10000);
   }
 
   collectStreakReward() {
@@ -444,18 +538,71 @@ class StateManager {
   }
 
   isCoffeeBoostActive() {
+    if (this.state.lifetimeCoffee) return true;
     if (!this.state.coffeeBoostExpiry) return false;
     return Date.now() < this.state.coffeeBoostExpiry;
   }
 
   activateCoffeeBoost() {
-    const expiry = Date.now() + 30 * 60 * 1000; // 30 minutes
+    const expiry = Date.now() + 30 * 60 * 1000;
     this.set('coffeeBoostExpiry', expiry);
   }
 
+  isWeekendWarriorActive() {
+    if (!this.state.weekendWarriorExpiry) return false;
+    return Date.now() < this.state.weekendWarriorExpiry;
+  }
+
+  activateWeekendWarrior() {
+    this.set('weekendWarriorExpiry', Date.now() + 60 * 60 * 1000);
+  }
+
   resetState() {
-    this.state = structuredClone(DEFAULT_STATE);
+    const fresh = structuredClone(DEFAULT_STATE);
+    if (this.meta.activeProfileId) {
+      const active = this.getActiveProfile();
+      if (active) {
+        fresh.playerName = active.name;
+        fresh.currentAvatar = active.emoji;
+      }
+    }
+    this.state = fresh;
     this._save();
+    this._notifyAll();
+  }
+
+  // ---------- Multi-profile export/import ----------
+
+  exportAll() {
+    const out = { meta: this.meta, profiles: {} };
+    for (const p of this.meta.profiles) {
+      const raw = localStorage.getItem(PROFILE_PREFIX + p.id);
+      out.profiles[p.id] = raw ? JSON.parse(raw) : null;
+    }
+    return out;
+  }
+
+  importAll(payload) {
+    if (!payload || !payload.meta || !payload.profiles) {
+      // Treat as legacy single-profile blob.
+      if (payload && typeof payload === 'object') {
+        this.update(payload);
+        return true;
+      }
+      return false;
+    }
+    // Wipe existing profiles
+    for (const p of this.meta.profiles) {
+      localStorage.removeItem(PROFILE_PREFIX + p.id);
+    }
+    this.meta = payload.meta;
+    saveMeta(this.meta);
+    for (const id of Object.keys(payload.profiles)) {
+      localStorage.setItem(PROFILE_PREFIX + id, JSON.stringify(payload.profiles[id]));
+    }
+    this.state = this._loadActive();
+    this._notifyAll();
+    return true;
   }
 }
 

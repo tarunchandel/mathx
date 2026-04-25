@@ -21,15 +21,122 @@ export class App {
   }
 
   init() {
-    // Apply saved theme
+    // First-run gate: if no profile exists, show profile creation flow.
+    if (!state.hasProfile()) {
+      this.renderProfileGate({ firstRun: true });
+      return;
+    }
+
     document.documentElement.setAttribute('data-theme', state.get('currentTheme') || 'midnights');
-    
-    // Check daily streak and calculate current level based on sub-level clearing
     state.checkStreak();
     state.recalculateCurrentLevel();
-    
-    // Show splash then render
     this.showSplash();
+  }
+
+  // === PROFILE GATE (Netflix-style) ===
+  renderProfileGate({ firstRun = false } = {}) {
+    document.documentElement.setAttribute('data-theme', 'midnights');
+    const app = document.getElementById('app');
+    const profiles = state.getProfiles();
+    const max = 5;
+
+    const profileCards = profiles.map(p => `
+      <button class="profile-pick-card" data-profile-id="${p.id}">
+        <div class="profile-pick-avatar">${p.emoji || '🦸'}</div>
+        <div class="profile-pick-name">${this.escapeHtml(p.name)}</div>
+        <button class="profile-pick-delete" data-delete-id="${p.id}" title="Delete profile">✕</button>
+      </button>
+    `).join('');
+
+    const canAdd = profiles.length < max;
+    const addCardHTML = canAdd ? `
+      <button class="profile-pick-card profile-pick-add" id="profileAdd">
+        <div class="profile-pick-avatar">＋</div>
+        <div class="profile-pick-name">Add Profile</div>
+      </button>` : '';
+
+    app.innerHTML = `
+      <div class="profile-gate">
+        <div class="profile-gate-title">${firstRun ? 'Welcome to MathX' : "Who's playing?"}</div>
+        <div class="profile-gate-sub">${firstRun ? 'Create your first profile to begin.' : 'Pick a profile to continue.'}</div>
+        <div class="profile-pick-grid">
+          ${profileCards}
+          ${addCardHTML}
+        </div>
+        <div id="profileCreateForm" class="profile-create-form" style="display:${profiles.length === 0 ? 'flex' : 'none'};">
+          <div class="profile-create-title">Create profile</div>
+          <div class="profile-create-emojis" id="profileEmojiPicker">
+            ${['🦸','🦄','🐉','🥷','👽','😺','🐼','🦊','🐙','🧙','👨‍🚀','🤖'].map((e,i)=>`<button class="emoji-pick ${i===0?'selected':''}" data-emoji="${e}">${e}</button>`).join('')}
+          </div>
+          <input type="text" maxlength="20" placeholder="Player name" id="profileNameInput" class="profile-name-input" />
+          <div style="display:flex; gap:var(--space-md); width:100%;">
+            ${profiles.length > 0 ? '<button class="btn btn-secondary btn-full" id="profileCancelBtn">Cancel</button>' : ''}
+            <button class="btn btn-primary btn-full" id="profileCreateBtn">Create</button>
+          </div>
+        </div>
+      </div>
+    `;
+
+    // Bind profile picks
+    app.querySelectorAll('[data-profile-id]').forEach(card => {
+      card.addEventListener('click', (e) => {
+        if (e.target.matches('[data-delete-id]')) return;
+        const pid = card.dataset.profileId;
+        state.switchProfile(pid);
+        document.documentElement.setAttribute('data-theme', state.get('currentTheme') || 'midnights');
+        state.checkStreak();
+        state.recalculateCurrentLevel();
+        this.showSplash();
+      });
+    });
+
+    app.querySelectorAll('[data-delete-id]').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const id = btn.dataset.deleteId;
+        if (state.getProfiles().length <= 1) {
+          alert('You must keep at least one profile.');
+          return;
+        }
+        if (confirm('Delete this profile? This wipes all its progress.')) {
+          state.deleteProfile(id);
+          this.renderProfileGate({ firstRun: false });
+        }
+      });
+    });
+
+    const addBtn = document.getElementById('profileAdd');
+    const form = document.getElementById('profileCreateForm');
+    if (addBtn) addBtn.onclick = () => { form.style.display = 'flex'; };
+    const cancelBtn = document.getElementById('profileCancelBtn');
+    if (cancelBtn) cancelBtn.onclick = () => { form.style.display = 'none'; };
+
+    // Emoji picker
+    let pickedEmoji = '🦸';
+    document.querySelectorAll('.emoji-pick').forEach(b => {
+      b.addEventListener('click', () => {
+        document.querySelectorAll('.emoji-pick').forEach(x => x.classList.remove('selected'));
+        b.classList.add('selected');
+        pickedEmoji = b.dataset.emoji;
+      });
+    });
+
+    const createBtn = document.getElementById('profileCreateBtn');
+    if (createBtn) {
+      createBtn.onclick = () => {
+        const nameInput = document.getElementById('profileNameInput');
+        const name = (nameInput.value || '').trim() || 'Maverick';
+        state.createProfile(name, pickedEmoji);
+        document.documentElement.setAttribute('data-theme', state.get('currentTheme') || 'midnights');
+        state.checkStreak();
+        state.recalculateCurrentLevel();
+        this.showSplash();
+      };
+    }
+  }
+
+  escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   }
 
   showSplash() {
@@ -314,7 +421,76 @@ export class App {
   }
 
   // === GAME SCREEN ===
+  // Public entry: shows pre-quiz powerup picker, then starts the quiz.
   startGame(level, difficulty) {
+    this._pendingGame = { level, difficulty };
+    this.showPowerupPicker(level, difficulty);
+  }
+
+  showPowerupPicker(level, difficulty) {
+    const diffConfig = getDifficultyConfig(difficulty);
+    const inv = state.get('inventory') || {};
+    // Whitelist of powerups that auto-arm at quiz start.
+    const armable = [
+      { key: 'safetyPins',  name: 'Safety Pin',   emoji: '🧷', desc: 'Absorbs 1 wrong answer.' },
+      { key: 'timeWarps',   name: 'Time Warp',    emoji: '⏳', desc: '+5s on every timed question.', timedOnly: true },
+      { key: 'greatEscapes',name: 'Great Escape', emoji: '🪂', desc: 'Keep coins on Great Reset.' },
+      { key: 'shieldWall',  name: 'Shield Wall',  emoji: '🛡️', desc: 'Auto-absorbs first wrong answer.' },
+      { key: 'luckyClover', name: 'Lucky Clover', emoji: '🍀', desc: '+15% Lucky 13 chance this set.' },
+      { key: 'goldRush',    name: 'Gold Rush',    emoji: '💰', desc: 'Triples one correct answer reward.' },
+      { key: 'rocketFuel',  name: 'Rocket Fuel',  emoji: '🚀', desc: '3× coins for this entire set.' },
+      { key: 'cloverChain', name: 'Clover Chain', emoji: '☘️', desc: 'Streak bonus stacks per correct.' },
+      { key: 'crystalBall', name: 'Crystal Ball', emoji: '🔮', desc: 'Reveals first digit of Q1.' },
+    ].filter(p => (inv[p.key] || 0) > 0 && (!p.timedOnly || diffConfig.timer));
+
+    const screen = document.getElementById('screen-game');
+    const itemsHTML = armable.length === 0
+      ? `<div class="powerup-picker-empty">No powerups available. Visit the shop to stock up!</div>`
+      : armable.map(p => `
+          <label class="powerup-pick" data-key="${p.key}">
+            <input type="checkbox" data-key="${p.key}">
+            <div class="powerup-pick-icon">${p.emoji}</div>
+            <div class="powerup-pick-info">
+              <div class="powerup-pick-name">${p.name} <span class="powerup-pick-count">×${inv[p.key]}</span></div>
+              <div class="powerup-pick-desc">${p.desc}</div>
+            </div>
+          </label>
+        `).join('');
+
+    screen.innerHTML = `
+      <div class="header-bar">
+        <button class="game-close-btn" id="ppCloseBtn">✕</button>
+        <div class="header-title">Pre-Quiz</div>
+        <div></div>
+      </div>
+      <div class="screen-content">
+        <div class="powerup-picker-card">
+          <div class="powerup-picker-title">Level ${level} · ${diffConfig.label}</div>
+          <div class="powerup-picker-sub">Pick power-ups to arm for this run. They'll be consumed automatically.</div>
+          <div class="powerup-picker-list">${itemsHTML}</div>
+          <button class="btn btn-primary btn-full btn-lg" id="ppStartBtn">Start Quiz ›</button>
+        </div>
+      </div>
+    `;
+
+    this.navigateTo('game');
+    this.hideTabBar();
+
+    document.getElementById('ppCloseBtn').onclick = () => {
+      this._pendingGame = null;
+      this.exitGame();
+    };
+    document.getElementById('ppStartBtn').onclick = () => {
+      const selected = {};
+      screen.querySelectorAll('input[type="checkbox"]:checked').forEach(cb => {
+        selected[cb.dataset.key] = true;
+        state.useItem(cb.dataset.key); // consume now
+      });
+      this._actuallyStartGame(level, difficulty, selected);
+    };
+  }
+
+  _actuallyStartGame(level, difficulty, armed = {}) {
     const questions = generateQuestionSet(level);
     const diffConfig = getDifficultyConfig(difficulty);
 
@@ -331,45 +507,57 @@ export class App {
       totalStartTime: Date.now(),
       timerValue: diffConfig.timer,
       isTimerFrozen: false,
-      safetyPinUsed: false,
-      greatEscapeActive: false,
-      timeWarpUsed: false,
+
+      // Armed powerup flags
+      armed: armed,
+      safetyArmed: !!(armed.safetyPins || armed.shieldWall),
+      greatEscapeActive: !!armed.greatEscapes,
+      luckyCloverActive: !!armed.luckyClover,
+      goldRushAvailable: !!armed.goldRush,
+      rocketFuelActive: !!armed.rocketFuel,
+      cloverChainActive: !!armed.cloverChain,
+      consecutiveCorrect: 0,
+      timeWarpActive: !!armed.timeWarps,
+      crystalBallActive: !!armed.crystalBall,
     };
 
-    // Check for active powerups
-    const inv = state.get('inventory');
-    
     this.renderGameScreen();
     this.navigateTo('game');
     this.hideTabBar();
-    
-    // Start timer if applicable
-    if (diffConfig.timer) {
-      this.startTimer();
-    }
-    
+
+    if (diffConfig.timer) this.startTimer();
     this.questionStartTime = Date.now();
+
+    // Surface armed powerups via toast
+    const armedList = Object.keys(armed);
+    if (armedList.length) {
+      this.showToast(`✨ Armed: ${armedList.length} power-up${armedList.length === 1 ? '' : 's'}`, 'success');
+    }
   }
 
   renderGameScreen() {
     const gs = this.gameState;
     const q = gs.questions[gs.currentQuestion];
     const diffConfig = gs.diffConfig;
-    const inv = state.get('inventory');
 
-    // Active powerup chips
-    let powerupsHTML = '';
-    if (inv.safetyPins > 0 && !gs.safetyPinUsed) {
-      powerupsHTML += `<span class="active-powerup-chip" id="useSafetyPin" title="Click to activate">🧷 Safety Pin (${inv.safetyPins})</span>`;
-    }
-    if (inv.timeWarps > 0 && !gs.timeWarpUsed && diffConfig.timer) {
-      powerupsHTML += `<span class="active-powerup-chip" id="useTimeWarp" title="Click to activate">⏳ Time Warp (${inv.timeWarps})</span>`;
-    }
-    if (inv.greatEscapes > 0 && !gs.greatEscapeActive) {
-      powerupsHTML += `<span class="active-powerup-chip" id="useGreatEscape" title="Click to activate">🪂 Great Escape (${inv.greatEscapes})</span>`;
-    }
-    if (inv.autoSolve > 0) {
-      powerupsHTML += `<span class="active-powerup-chip" id="useAutoSolve" title="Click to activate">🤖 Auto-Solve (${inv.autoSolve})</span>`;
+    // Show ARMED powerup chips only (read-only, no click handlers — fix for invisible Enter bug).
+    let armedChips = [];
+    if (gs.safetyArmed) armedChips.push('🧷');
+    if (gs.greatEscapeActive) armedChips.push('🪂');
+    if (gs.timeWarpActive) armedChips.push('⏳');
+    if (gs.rocketFuelActive) armedChips.push('🚀');
+    if (gs.luckyCloverActive) armedChips.push('🍀');
+    if (gs.goldRushAvailable) armedChips.push('💰');
+    if (gs.cloverChainActive) armedChips.push('☘️');
+    const armedHTML = armedChips.length
+      ? `<div class="armed-row">${armedChips.map(e => `<span class="armed-chip">${e}</span>`).join('')}</div>`
+      : '';
+
+    // Crystal Ball: reveal first digit on first question only
+    let crystalHint = '';
+    if (gs.crystalBallActive && gs.currentQuestion === 0) {
+      const ans = String(q.answer).replace('-', '');
+      crystalHint = `<div class="crystal-hint">🔮 First digit: <b>${ans[0]}</b></div>`;
     }
 
     const screen = document.getElementById('screen-game');
@@ -383,12 +571,13 @@ export class App {
         <div class="game-progress">
           <div class="game-progress-fill" style="width: ${(gs.currentQuestion / 10) * 100}%"></div>
         </div>
-        ${powerupsHTML ? `<div class="active-items-row">${powerupsHTML}</div>` : ''}
+        ${armedHTML}
       </div>
-      
+
       <div class="game-question-area">
         <div class="question-number">Question ${gs.currentQuestion + 1} of 10</div>
         <div class="question-text" id="questionText">${q.display}</div>
+        ${crystalHint}
         <div class="answer-display" id="answerDisplay">
           <span id="answerText">${gs.userAnswer}</span><span class="cursor-blink"></span>
         </div>
@@ -436,60 +625,7 @@ export class App {
       closeBtn.addEventListener('click', () => this.exitGame());
     }
 
-    // Powerup buttons
-    const safetyPin = document.getElementById('useSafetyPin');
-    if (safetyPin) {
-      safetyPin.addEventListener('click', () => {
-        if (state.useItem('safetyPins')) {
-          this.gameState.safetyPinUsed = true;
-          safetyPin.remove();
-          this.showToast('🧷 Safety Pin activated!', 'success');
-          if (state.get('soundEffects')) SFX.coin();
-          if (state.get('haptics')) Haptics.light();
-        }
-      });
-    }
-
-    const timeWarp = document.getElementById('useTimeWarp');
-    if (timeWarp) {
-      timeWarp.addEventListener('click', () => {
-        if (state.useItem('timeWarps')) {
-          this.gameState.timeWarpUsed = true;
-          this.gameState.timerValue += 5;
-          this.updateTimerDisplay();
-          timeWarp.remove();
-          this.showToast('⏳ Time Warp! +5s', 'success');
-          if (state.get('soundEffects')) SFX.coin();
-          if (state.get('haptics')) Haptics.light();
-        }
-      });
-    }
-
-    const greatEscape = document.getElementById('useGreatEscape');
-    if (greatEscape) {
-      greatEscape.addEventListener('click', () => {
-        if (state.useItem('greatEscapes')) {
-          this.gameState.greatEscapeActive = true;
-          greatEscape.remove();
-          this.showToast('🪂 Great Escape activated!', 'success');
-          if (state.get('soundEffects')) SFX.coin();
-          if (state.get('haptics')) Haptics.light();
-        }
-      });
-    }
-
-    const autoSolve = document.getElementById('useAutoSolve');
-    if (autoSolve) {
-      autoSolve.addEventListener('click', () => {
-        if (state.useItem('autoSolve')) {
-          const q = this.gameState.questions[this.gameState.currentQuestion];
-          this.gameState.userAnswer = String(q.answer);
-          this.showToast('🤖 Auto-Solve used!', 'success');
-          this.submitAnswer();
-          autoSolve.remove();
-        }
-      });
-    }
+    // (Powerups are armed pre-quiz and trigger automatically — no in-game buttons.)
 
     // Keyboard support
     this._keyHandler = (e) => {
@@ -542,9 +678,10 @@ export class App {
     gs.questionTimes.push(answerTime);
     const isCorrect = checkAnswer(q, gs.userAnswer);
     
-    // Lucky 13 check (answered in ~1.3s)
+    // Lucky 13 check (answered in ~1.3s; clover widens the window)
     const timeSec = answerTime / 1000;
-    const isLucky13 = isCorrect && Math.abs(timeSec - 1.3) < 0.15;
+    const lucky13Window = gs.luckyCloverActive ? 0.30 : 0.15;
+    const isLucky13 = isCorrect && Math.abs(timeSec - 1.3) < lucky13Window;
 
     const answerDisplay = document.getElementById('answerDisplay');
 
@@ -561,13 +698,22 @@ export class App {
 
       // Calculate coins for this question
       let qCoins = gs.level * gs.diffConfig.multiplier;
-      
-      // Coffee boost & Weekend Warrior
-      if (state.isCoffeeBoostActive()) {
-        qCoins = Math.floor(qCoins * 1.5);
+
+      if (state.isCoffeeBoostActive()) qCoins = Math.floor(qCoins * 1.5);
+      if (state.get('lifetimeCoffee')) qCoins = Math.floor(qCoins * 1.25);
+      if (state.isWeekendWarriorActive && state.isWeekendWarriorActive()) qCoins *= 2;
+
+      // Pre-armed boosts
+      if (gs.rocketFuelActive) qCoins *= 3;
+      if (gs.cloverChainActive) {
+        gs.consecutiveCorrect = (gs.consecutiveCorrect || 0) + 1;
+        const bonusPct = Math.min(gs.consecutiveCorrect * 0.01, 0.30);
+        qCoins = Math.floor(qCoins * (1 + bonusPct));
       }
-      if (state.isWeekendWarriorActive && state.isWeekendWarriorActive()) {
-        qCoins *= 2;
+      if (gs.goldRushAvailable) {
+        qCoins *= 3;
+        gs.goldRushAvailable = false; // one-shot
+        this.showToast('💰 Gold Rush! 3× this answer', 'gold');
       }
 
       // Lucky 13
@@ -600,11 +746,12 @@ export class App {
     } else {
       // WRONG ANSWER
       answerDisplay.classList.add('wrong');
-      
+      gs.consecutiveCorrect = 0;
+
       // Check safety pin
-      if (gs.safetyPinUsed) {
-        // Safety pin absorbs the hit
-        gs.safetyPinUsed = false; // used up
+      if (gs.safetyArmed) {
+        // Safety pin / Shield Wall absorbs the hit
+        gs.safetyArmed = false;
         if (state.get('soundEffects')) SFX.wrong();
         if (state.get('haptics')) Haptics.medium();
         this.showToast('🧷 Safety Pin saved you!', 'success');
@@ -931,11 +1078,10 @@ export class App {
   startTimer() {
     const gs = this.gameState;
     if (!gs || !gs.diffConfig.timer) return;
-    
-    gs.timerValue = gs.diffConfig.timer;
-    if (gs.timeWarpUsed) {
-      // already applied
-    }
+
+    let base = gs.diffConfig.timer;
+    if (gs.timeWarpActive) base += 5; // armed Time Warp gives +5s every question
+    gs.timerValue = base;
     this.updateTimerDisplay();
 
     this.timerInterval = setInterval(() => {
@@ -948,9 +1094,9 @@ export class App {
         // Time's up - same as wrong answer
         this.stopTimer();
         
-        // Check safety pin
-        if (gs.safetyPinUsed) {
-          gs.safetyPinUsed = false;
+        // Check armed safety
+        if (gs.safetyArmed) {
+          gs.safetyArmed = false;
           this.showToast('🧷 Safety Pin saved you from timeout!', 'success');
           gs.currentQuestion++;
           gs.userAnswer = '';
@@ -1189,24 +1335,37 @@ export class App {
 
     // Apply item
     if (item.themeId) {
-      const themes = [...state.get('unlockedThemes'), item.themeId];
+      const themes = [...new Set([...state.get('unlockedThemes'), item.themeId])];
       state.set('unlockedThemes', themes);
       state.set('currentTheme', item.themeId);
       document.documentElement.setAttribute('data-theme', item.themeId);
     } else if (item.soundId) {
-      const sounds = [...state.get('unlockedSounds'), item.soundId];
+      const sounds = [...new Set([...state.get('unlockedSounds'), item.soundId])];
       state.set('unlockedSounds', sounds);
       state.set('enterSound', item.soundId);
-    } else if (item.unique) {
-      if (item.id === 'holographicName') {
-        state.set('holographicName', true);
-      } else if (item.id === 'vipStatus') {
-        state.set('vipStatus', true);
-      } else if (item.id === 'goldenAura') {
-        state.set('goldenAura', true);
-      } else if (item.id === 'plectrumGod') {
-        state.set('plectrumGod', true);
+    } else if (item.avatarKey) {
+      const avs = [...new Set([...(state.get('unlockedAvatars') || []), item.avatarKey])];
+      state.set('unlockedAvatars', avs);
+      state.set('currentAvatar', item.avatarKey);
+      // Sync into active profile metadata
+      const ap = state.getActiveProfile();
+      if (ap) state.renameProfile(ap.id, null, item.avatarKey);
+    } else if (item.bundle) {
+      // Apply each bundle component to inventory
+      for (const [k, count] of Object.entries(item.bundle)) {
+        state.addItem(k, count);
       }
+    } else if (item.statusKey) {
+      state.set(item.statusKey, true);
+      // Auto-equip exclusive titles/badges
+      if (['mastermindTitle', 'rockstarTitle', 'plectrumGod', 'godModeBadge', 'crownOfMath', 'fireBadge', 'roboBadge', 'piPin', 'starBurst'].includes(item.statusKey)) {
+        state.set('activeStatusBadge', item.statusKey);
+      }
+    } else if (item.unique) {
+      if (item.id === 'holographicName') state.set('holographicName', true);
+      else if (item.id === 'vipStatus') state.set('vipStatus', true);
+      else if (item.id === 'goldenAura') state.set('goldenAura', true);
+      else if (item.id === 'plectrumGod') state.set('plectrumGod', true);
     } else if (item.stackable) {
       state.addItem(item.id, 1);
     } else if (item.id === 'coffeeBoosts') {
@@ -1372,32 +1531,67 @@ export class App {
         </div>
 
         <div class="settings-section">
+          <div class="settings-title">Profiles</div>
+          <div class="settings-row" style="justify-content: center; gap: var(--space-md); flex-wrap: wrap;">
+            <button class="btn btn-secondary btn-sm" id="switchProfileBtn">Switch Profile</button>
+            <button class="btn btn-secondary btn-sm" id="renameProfileBtn">Rename</button>
+          </div>
+        </div>
+
+        <div class="settings-section">
           <div class="settings-title">Data Management</div>
-          <div class="settings-row" style="justify-content: center; gap: var(--space-md);">
-            <button class="btn btn-secondary btn-sm" id="exportProgress">Export Save</button>
+          <div class="settings-row" style="justify-content: center; gap: var(--space-md); flex-wrap: wrap;">
+            <button class="btn btn-secondary btn-sm" id="exportProgress">Export All Profiles</button>
             <button class="btn btn-secondary btn-sm" id="importProgress">Import Save</button>
             <input type="file" id="importFile" style="display:none;" accept=".json">
+          </div>
+          <div style="font-size: var(--fs-xs); color: var(--text-tertiary); text-align:center; margin-top: var(--space-sm);">
+            Exports include all profiles and their progress.
           </div>
         </div>
 
         <div style="text-align: center; margin-top: var(--space-xl); padding-bottom: var(--space-xl);">
-          <button class="btn btn-danger btn-sm" id="resetProgress">Reset All Progress</button>
+          <button class="btn btn-danger btn-sm" id="resetProgress">Reset This Profile's Progress</button>
         </div>
       </div>
     `;
   }
 
   renderInventoryRows() {
-    const inv = state.get('inventory');
+    const inv = state.get('inventory') || {};
     const items = [
       { key: 'safetyPins', name: 'Safety Pins', emoji: '🧷' },
       { key: 'timeWarps', name: 'Time Warps', emoji: '⏳' },
       { key: 'greatEscapes', name: 'Great Escapes', emoji: '🪂' },
       { key: 'autoSolve', name: 'Auto-Solve', emoji: '🤖' },
+      { key: 'fiftyFifty', name: '50/50', emoji: '🎯' },
+      { key: 'crystalBall', name: 'Crystal Ball', emoji: '🔮' },
+      { key: 'hintMaster', name: 'Hint Master', emoji: '💡' },
+      { key: 'shieldWall', name: 'Shield Wall', emoji: '🛡️' },
+      { key: 'doubleOrNothing', name: 'Double or Nothing', emoji: '🎲' },
+      { key: 'phoneAFriend', name: 'Phone a Friend', emoji: '📞' },
+      { key: 'rewindTime', name: 'Rewind Time', emoji: '⏪' },
+      { key: 'mirrorMirror', name: 'Mirror Mirror', emoji: '🪞' },
+      { key: 'luckyClover', name: 'Lucky Clover', emoji: '🍀' },
+      { key: 'goldRush', name: 'Gold Rush', emoji: '💰' },
       { key: 'coffeeBoosts', name: 'Coffee Boosts', emoji: '☕' },
       { key: 'streakFreezes', name: 'Streak Freezes', emoji: '🧊' },
       { key: 'weekendWarrior', name: 'Weekend Warrior', emoji: '🎉' },
-    ];
+      { key: 'xpExtravaganza', name: 'XP Extravaganza', emoji: '📈' },
+      { key: 'plectrumPower', name: 'Plectrum Power', emoji: '🎼' },
+      { key: 'rocketFuel', name: 'Rocket Fuel', emoji: '🚀' },
+      { key: 'energyDrink', name: 'Energy Drink', emoji: '⚡' },
+      { key: 'morningSun', name: 'Morning Sun', emoji: '🌅' },
+      { key: 'doubleDip', name: 'Double Dip', emoji: '🍦' },
+      { key: 'megaPhone', name: 'Mega Phone', emoji: '📣' },
+      { key: 'turboTimer', name: 'Turbo Timer', emoji: '⏱️' },
+      { key: 'cloverChain', name: 'Clover Chain', emoji: '☘️' },
+      { key: 'comboCarnival', name: 'Combo Carnival', emoji: '🎪' },
+    ].filter(it => (inv[it.key] || 0) > 0);
+
+    if (items.length === 0) {
+      return `<div class="settings-row"><div class="settings-row-label" style="text-align:center; width:100%; color: var(--text-tertiary);">No items yet — visit the Shop!</div></div>`;
+    }
 
     return items.map(item => `
       <div class="settings-row">
@@ -1440,7 +1634,8 @@ export class App {
     const exportBtn = document.getElementById('exportProgress');
     if (exportBtn) {
       exportBtn.addEventListener('click', () => {
-        const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(state.state));
+        const payload = state.exportAll();
+        const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(payload, null, 2));
         const dlAnchorElem = document.createElement('a');
         dlAnchorElem.setAttribute("href", dataStr);
         dlAnchorElem.setAttribute("download", `mathx_save_${new Date().getTime()}.json`);
@@ -1451,20 +1646,21 @@ export class App {
     const importBtn = document.getElementById('importProgress');
     const importFile = document.getElementById('importFile');
     if (importBtn && importFile) {
-      importBtn.addEventListener('click', () => {
-        importFile.click();
-      });
+      importBtn.addEventListener('click', () => importFile.click());
       importFile.addEventListener('change', (e) => {
         const file = e.target.files[0];
         if (!file) return;
         const reader = new FileReader();
-        reader.onload = (e) => {
+        reader.onload = (ev) => {
           try {
-            const data = JSON.parse(e.target.result);
-            state.resetState();
-            state.update(data);
-            this.showToast('Save file loaded successfully!', 'success');
-            setTimeout(() => this.render(), 500);
+            const data = JSON.parse(ev.target.result);
+            const ok = state.importAll(data);
+            if (ok) {
+              this.showToast('Save file loaded successfully!', 'success');
+              setTimeout(() => this.render(), 500);
+            } else {
+              this.showToast('Save file format not recognized.', 'error');
+            }
           } catch (err) {
             this.showToast('Failed to load save file.', 'error');
           }
@@ -1472,6 +1668,21 @@ export class App {
         reader.readAsText(file);
       });
     }
+
+    const switchBtn = document.getElementById('switchProfileBtn');
+    if (switchBtn) switchBtn.addEventListener('click', () => this.renderProfileGate({ firstRun: false }));
+
+    const renameBtn = document.getElementById('renameProfileBtn');
+    if (renameBtn) renameBtn.addEventListener('click', () => {
+      const ap = state.getActiveProfile();
+      if (!ap) return;
+      const name = prompt('New name?', ap.name);
+      if (name && name.trim()) {
+        state.renameProfile(ap.id, name.trim());
+        document.getElementById('screen-profile').innerHTML = this.renderProfileScreen();
+        this.bindProfileEvents();
+      }
+    });
   }
 
   // === TAB BAR & NAVIGATION ===

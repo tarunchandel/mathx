@@ -5,16 +5,16 @@
  */
 
 const LEVEL_CONFIG = {
-  1: { minOp: 1, maxOp: 12, ops: ['+', '-'], allowDecimals: false, allowNegatives: false, label: 'The Penny I', tier: 'The Penny' },
+  1: { minOp: 1, maxOp: 12, ops: ['+', '-', '×', '÷'], allowDecimals: false, allowNegatives: false, label: 'The Penny I', tier: 'The Penny' },
   2: { minOp: 1, maxOp: 12, ops: ['+', '-', '×', '÷'], allowDecimals: false, allowNegatives: false, label: 'The Penny II', tier: 'The Penny' },
-  3: { minOp: 10, maxOp: 50, ops: ['+', '-', '×'], allowDecimals: false, allowNegatives: false, label: 'Intern I', tier: 'Intern' },
+  3: { minOp: 10, maxOp: 50, ops: ['+', '-', '×', '÷'], allowDecimals: false, allowNegatives: false, label: 'Intern I', tier: 'Intern' },
   4: { minOp: 10, maxOp: 75, ops: ['+', '-', '×', '÷'], allowDecimals: false, allowNegatives: false, label: 'Intern II', tier: 'Intern' },
   5: { minOp: 10, maxOp: 100, ops: ['+', '-', '×', '÷'], allowDecimals: false, allowNegatives: false, label: 'Intern III', tier: 'Intern' },
-  6: { minOp: 10, maxOp: 99, ops: ['+', '-', '×'], twoDigitMult: true, threeDigitAddSub: true, allowDecimals: false, allowNegatives: false, label: 'Eras Tour I', tier: 'The Eras Tour' },
+  6: { minOp: 10, maxOp: 99, ops: ['+', '-', '×', '÷'], twoDigitMult: true, threeDigitAddSub: true, allowDecimals: false, allowNegatives: false, label: 'Eras Tour I', tier: 'The Eras Tour' },
   7: { minOp: 10, maxOp: 99, ops: ['+', '-', '×', '÷'], twoDigitMult: true, threeDigitAddSub: true, allowDecimals: false, allowNegatives: false, label: 'Eras Tour II', tier: 'The Eras Tour' },
   8: { minOp: 10, maxOp: 999, ops: ['+', '-', '×', '÷'], threeDigitMult: true, allowDecimals: true, allowNegatives: false, label: 'Legend I', tier: 'Legend' },
   9: { minOp: 10, maxOp: 999, ops: ['+', '-', '×', '÷'], threeDigitMult: true, allowDecimals: true, allowNegatives: false, label: 'Legend II', tier: 'Legend' },
-  10: { minOp: 10, maxOp: 9999, ops: ['+', '-', '×'], fourDigitAddSub: true, threeDigitMult: true, allowDecimals: true, allowNegatives: true, label: 'Mastermind', tier: 'Mastermind' },
+  10: { minOp: 10, maxOp: 9999, ops: ['+', '-', '×', '÷'], fourDigitAddSub: true, threeDigitMult: true, allowDecimals: true, allowNegatives: true, label: 'Mastermind', tier: 'Mastermind' },
 };
 
 /**
