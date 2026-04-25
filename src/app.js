@@ -139,6 +139,95 @@ export class App {
     return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   }
 
+  // === Shared header bar with profile bubble (top-right quick switcher) ===
+  renderHeaderBar(title, coinSpanId = 'coinDisplay') {
+    const ap = state.getActiveProfile();
+    const avatar = (ap && ap.emoji) || state.getStatusEmoji() || '🦸';
+    return `
+      <div class="header-bar">
+        <div class="header-title">${this.escapeHtml(title)}</div>
+        <div class="header-right">
+          <div class="header-coins">
+            <span class="coin-icon">🪙</span>
+            <span id="${coinSpanId}">${this.formatNumber(state.get('balance'))}</span>
+          </div>
+          <button class="profile-bubble" id="profileBubble-${coinSpanId}" data-bubble="1" aria-label="Switch profile">
+            <span class="profile-bubble-emoji">${avatar}</span>
+          </button>
+        </div>
+      </div>
+    `;
+  }
+
+  // === Profile quick-switch popover ===
+  renderProfilePopover() {
+    return `
+      <div class="profile-popover" id="profilePopover" aria-hidden="true">
+        <div class="profile-popover-bg" id="profilePopoverBg"></div>
+        <div class="profile-popover-card">
+          <div class="profile-popover-title">Switch Profile</div>
+          <div class="profile-popover-list" id="profilePopoverList"></div>
+          <div class="profile-popover-actions">
+            <button class="btn btn-secondary btn-sm btn-full" id="profilePopoverManage">Manage Profiles</button>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  bindProfileBubble() {
+    document.querySelectorAll('[data-bubble="1"]').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        this.openProfilePopover();
+      });
+    });
+  }
+
+  openProfilePopover() {
+    const pop = document.getElementById('profilePopover');
+    if (!pop) return;
+    const list = document.getElementById('profilePopoverList');
+    const profiles = state.getProfiles();
+    const activeId = state.getActiveProfile()?.id;
+    list.innerHTML = profiles.map(p => `
+      <button class="profile-popover-item ${p.id === activeId ? 'active' : ''}" data-pid="${p.id}">
+        <span class="profile-popover-emoji">${p.emoji || '🦸'}</span>
+        <span class="profile-popover-name">${this.escapeHtml(p.name)}</span>
+        ${p.id === activeId ? '<span class="profile-popover-tick">✓</span>' : ''}
+      </button>
+    `).join('');
+
+    pop.classList.add('show');
+    pop.setAttribute('aria-hidden', 'false');
+
+    const close = () => {
+      pop.classList.remove('show');
+      pop.setAttribute('aria-hidden', 'true');
+    };
+
+    document.getElementById('profilePopoverBg').onclick = close;
+
+    list.querySelectorAll('[data-pid]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const pid = btn.dataset.pid;
+        if (pid === activeId) { close(); return; }
+        state.switchProfile(pid);
+        document.documentElement.setAttribute('data-theme', state.get('currentTheme') || 'midnights');
+        state.checkStreak();
+        state.recalculateCurrentLevel();
+        close();
+        this.render(); // full re-render with new profile context
+        this.showToast(`👋 Welcome back, ${state.get('playerName')}!`, 'success');
+      });
+    });
+
+    document.getElementById('profilePopoverManage').onclick = () => {
+      close();
+      this.renderProfileGate({ firstRun: false });
+    };
+  }
+
   showSplash() {
     const app = document.getElementById('app');
     app.innerHTML = `
@@ -178,6 +267,7 @@ export class App {
       ${this.renderTabBar()}
       ${this.renderLevelModal()}
       ${this.renderPurchaseModal()}
+      ${this.renderProfilePopover()}
       <div class="toast-container" id="toastContainer"></div>
       <div class="great-reset-overlay" id="greatResetOverlay">
         <div class="great-reset-bg"></div>
@@ -195,6 +285,7 @@ export class App {
     this.bindPathEvents();
     this.bindShopEvents();
     this.bindProfileEvents();
+    this.bindProfileBubble();
     this.navigateTo('path');
   }
 
@@ -246,13 +337,7 @@ export class App {
     }
 
     return `
-      <div class="header-bar">
-        <div class="header-title">MathX</div>
-        <div class="header-coins" id="headerCoins">
-          <span class="coin-icon">🪙</span>
-          <span id="coinDisplay">${this.formatNumber(state.get('balance'))}</span>
-        </div>
-      </div>
+      ${this.renderHeaderBar('MathX', 'coinDisplay')}
       <div class="screen-content" id="pathScrollArea">
         <div style="text-align:center; margin-bottom: var(--space-lg);">
           <div style="font-size: var(--fs-3xl);">${statusEmoji}</div>
@@ -1068,8 +1153,9 @@ export class App {
     this.bindPathEvents();
     document.getElementById('screen-profile').innerHTML = this.renderProfileScreen();
     this.bindProfileEvents();
+    this.bindProfileBubble();
     this.updateCoinDisplays();
-    
+
     this.navigateTo('path');
     this.showTabBar();
   }
@@ -1141,9 +1227,12 @@ export class App {
     const categories = getShopCategories();
     const activeCategory = this._shopCategory || 'powerups';
     
-    const tabsHTML = categories.map(cat => 
-      `<button class="shop-tab ${cat.id === activeCategory ? 'active' : ''}" data-category="${cat.id}">${cat.emoji} ${cat.label}</button>`
-    ).join('');
+    const tabsHTML = categories.map(cat => {
+      const isActive = cat.id === activeCategory;
+      const cls = `shop-tab${isActive ? ' active is-active' : ''}`;
+      const aria = isActive ? ' aria-selected="true"' : '';
+      return `<button class="${cls}" data-category="${cat.id}"${aria}>${cat.emoji} ${cat.label}</button>`;
+    }).join('');
 
     const items = SHOP_CATEGORIES[activeCategory]?.items || [];
     const stateData = {
@@ -1188,13 +1277,7 @@ export class App {
     }).join('');
 
     return `
-      <div class="header-bar">
-        <div class="header-title">Shop</div>
-        <div class="header-coins">
-          <span class="coin-icon">🪙</span>
-          <span id="shopCoinDisplay">${this.formatNumber(state.get('balance'))}</span>
-        </div>
-      </div>
+      ${this.renderHeaderBar('Shop', 'shopCoinDisplay')}
       <div class="screen-content">
         <div class="shop-tabs">${tabsHTML}</div>
         <div class="shop-grid">${itemsHTML}</div>
@@ -1203,17 +1286,25 @@ export class App {
   }
 
   bindShopEvents() {
-    // Category tabs
-    document.querySelectorAll('.shop-tab').forEach(tab => {
+    // Scope queries to the shop screen so we never collide with other tab classes elsewhere.
+    const root = document.getElementById('screen-shop');
+    if (!root) return;
+
+    root.querySelectorAll('.shop-tab').forEach(tab => {
       tab.addEventListener('click', () => {
         this._shopCategory = tab.dataset.category;
-        document.getElementById('screen-shop').innerHTML = this.renderShopScreen();
+        root.innerHTML = this.renderShopScreen();
         this.bindShopEvents();
+        this.bindProfileBubble(); // header bubble re-renders too
+        // Scroll the now-active tab into view so user sees their selection
+        const active = root.querySelector('.shop-tab.is-active');
+        if (active && active.scrollIntoView) {
+          active.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+        }
       });
     });
 
-    // Shop items
-    document.querySelectorAll('.shop-item').forEach(item => {
+    root.querySelectorAll('.shop-item').forEach(item => {
       item.addEventListener('click', () => {
         const itemId = item.dataset.itemId;
         const category = item.dataset.category;
@@ -1275,6 +1366,7 @@ export class App {
   refreshShop() {
     document.getElementById('screen-shop').innerHTML = this.renderShopScreen();
     this.bindShopEvents();
+    this.bindProfileBubble();
   }
 
   // === PURCHASE MODAL ===
@@ -1423,13 +1515,7 @@ export class App {
     const soundOn = state.get('soundEffects');
 
     return `
-      <div class="header-bar">
-        <div class="header-title">Profile</div>
-        <div class="header-coins">
-          <span class="coin-icon">🪙</span>
-          <span id="profileCoinDisplay">${this.formatNumber(balance)}</span>
-        </div>
-      </div>
+      ${this.renderHeaderBar('Profile', 'profileCoinDisplay')}
       <div class="screen-content">
         <div class="profile-header-card ${state.get('goldenAura') ? 'golden-aura' : ''}">
           <div class="profile-avatar">${statusEmoji}</div>
