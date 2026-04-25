@@ -81,6 +81,13 @@ const SHOP_CATEGORIES = {
       { id: 'sunsetLight',       name: 'Sunset · Light',      emoji: '🌅', description: 'Peach, coral, and a hot rose horizon.',                price: 4500, currency: 'coins', themeId: 'sunsetLight', mode: 'light' },
       { id: 'cyberpunkDark',     name: 'Cyberpunk · Dark',    emoji: '🤖', description: 'Hot pink & laser yellow on void violet.',               price: 7000, currency: 'coins', themeId: 'cyberpunkDark', mode: 'dark' },
       { id: 'cyberpunkLight',    name: 'Cyberpunk · Light',   emoji: '🎰', description: 'Sun-bleached arcade — yellow with hot magenta accents.',price: 7000, currency: 'coins', themeId: 'cyberpunkLight', mode: 'light' },
+      // === Vibrant Collection (merged from main) ===
+      { id: 'auroraDark',        name: 'Aurora · Dark',       emoji: '🌌', description: 'Electric violet & teal ribbons shimmering across a deep night sky.', price: 4500, currency: 'coins', themeId: 'aurora-dark', mode: 'dark' },
+      { id: 'auroraLight',       name: 'Aurora · Light',      emoji: '🌠', description: 'Aurora reimagined at dawn — soft cloud-white with violet & teal highlights.', price: 4500, currency: 'coins', themeId: 'aurora-light', mode: 'light' },
+      { id: 'vaporwaveDark',     name: 'Vaporwave · Dark',    emoji: '🌴', description: 'Hyper-saturated magenta & cyan glow over a midnight grid. Pure 80s energy.', price: 5500, currency: 'coins', themeId: 'vaporwave-dark', mode: 'dark' },
+      { id: 'vaporwaveLight',    name: 'Vaporwave · Light',   emoji: '🏝️', description: 'Sun-bleached pastel vaporwave. Cotton-candy magenta & cyan on ivory.', price: 5500, currency: 'coins', themeId: 'vaporwave-light', mode: 'light' },
+      { id: 'citrusDark',        name: 'Citrus · Dark',       emoji: '🍊', description: 'Electric lime & tangerine punch against a charcoal backdrop. Zero chill.', price: 4000, currency: 'coins', themeId: 'citrus-dark', mode: 'dark' },
+      { id: 'citrusLight',       name: 'Citrus · Light',      emoji: '🍋', description: 'Sunlit lime & tangerine on crisp ivory. Wakes up your whole screen.', price: 4000, currency: 'coins', themeId: 'citrus-light', mode: 'light' },
     ]
   },
   status: {
