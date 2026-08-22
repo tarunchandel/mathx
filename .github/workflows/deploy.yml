@@ -42,9 +42,9 @@ jobs:
           ./gradlew bundleRelease
 
       - name: Upload to Google Play
-        uses: r0adrunner/play-publisher@v1.4.1
+        uses: r0adkll/upload-google-play@v1
         with:
-          serviceAccountJsonPlain: ${{ secrets.PLAY_CONFIG_JSON }}
+          serviceAccountJsonPlainText: ${{ secrets.PLAY_CONFIG_JSON }}
           packageName: com.mathx.mastermind
           releaseFiles: android/app/build/outputs/bundle/release/app-release.aab
           track: internal # Deploy to internal test track first
