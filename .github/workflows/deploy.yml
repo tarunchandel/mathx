@@ -15,8 +15,6 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-        with:
-          ref: main
 
       - name: Set up Java JDK
         uses: actions/setup-java@v4
@@ -54,25 +52,12 @@ jobs:
         run: npx cap sync android
 
       - name: Build Release Bundle (AAB)
-        id: build_bundle
         run: |
           cd android
-          ./gradlew bundleRelease > gradle-log.txt 2>&1
-        continue-on-error: true
+          ./gradlew bundleRelease
 
-      - name: Check if Gradle failed and upload log
-        if: steps.build_bundle.outcome == 'failure' || hashFiles('android/app/build/outputs/bundle/release/app-release.aab') == ''
-        run: |
-          git config --local user.email "bot@antigravity.ai"
-          git config --local user.name "Antigravity Bot"
-          git fetch origin main
-          git checkout main
-          git pull origin main --rebase
-          cp android/gradle-log.txt gradle-error-log.txt
-          git add gradle-error-log.txt
-          git commit -m "Add gradle error log" || true
-          git push origin main
-          exit 1
+      - name: List outputs to find AAB
+        run: find android/app/build/outputs -type f
 
       - name: Upload to Google Play
         uses: r0adkll/upload-google-play@v1
