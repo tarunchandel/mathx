@@ -33,7 +33,13 @@ jobs:
         run: npm run build
 
       - name: Sync Capacitor
-        run: npx cap sync android
+        run: |
+          npx cap sync android > sync-log.txt 2>&1 || true
+          git config --local user.email "bot@antigravity.ai"
+          git config --local user.name "Antigravity Bot"
+          git add sync-log.txt
+          git commit -m "Debug sync log [skip ci]" || true
+          git push origin HEAD:main || true
 
       - name: Build Release Bundle (AAB)
         run: |
