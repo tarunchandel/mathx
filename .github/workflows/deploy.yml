@@ -15,8 +15,6 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-        with:
-          ref: main
 
       - name: Set up Java JDK
         uses: actions/setup-java@v4
@@ -38,7 +36,7 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22'
           cache: 'npm'
 
       - name: Install dependencies
@@ -50,18 +48,19 @@ jobs:
       - name: Make Gradle Wrapper Executable
         run: chmod +x android/gradlew
 
-      - name: Copy web assets to Android
-        run: npx cap copy android > cap-copy-log.txt 2>&1
-        continue-on-error: true
+      - name: Sync Capacitor
+        run: npx cap sync android
 
-      - name: Update Android plugins
-        run: npx cap update android > cap-update-log.txt 2>&1
-        continue-on-error: true
-
-      - name: Commit and Push Logs
+      - name: Build Release Bundle (AAB)
         run: |
-          git config --local user.email "bot@antigravity.ai"
-          git config --local user.name "Antigravity Bot"
-          git add cap-copy-log.txt cap-update-log.txt || true
-          git commit -m "Debug logs for cap commands" || true
-          git push origin main
+          cd android
+          ./gradlew bundleRelease
+
+      - name: Upload to Google Play
+        uses: r0adkll/upload-google-play@v1
+        with:
+          serviceAccountJsonPlainText: ${{ secrets.PLAY_CONFIG_JSON }}
+          packageName: com.mathx.mastermind
+          releaseFiles: android/app/build/outputs/bundle/release/app-release.aab
+          track: internal
+          status: completed
