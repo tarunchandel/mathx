@@ -3,8 +3,8 @@ name: Deploy to Google Play
 on:
   push:
     tags:
-      - 'v*' # Trigger on release tags (e.g., v1.0.0)
-  workflow_dispatch: # Enable manual triggers
+      - 'v*'
+  workflow_dispatch:
 
 jobs:
   deploy:
@@ -22,6 +22,9 @@ jobs:
           java-version: '17'
           distribution: 'zulu'
 
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
@@ -38,23 +41,12 @@ jobs:
         run: chmod +x android/gradlew
 
       - name: Sync Capacitor
-        run: |
-          npx cap sync android > sync-log.txt 2>&1
+        run: npx cap sync android
 
       - name: Build Release Bundle (AAB)
         run: |
           cd android
-          ./gradlew bundleRelease > ../gradle-log.txt 2>&1
-
-      - name: Commit and Push Logs on Failure
-        if: failure()
-        run: |
-          git config --local user.email "bot@antigravity.ai"
-          git config --local user.name "Antigravity Bot"
-          git checkout -b debug-logs || git checkout debug-logs
-          git add sync-log.txt gradle-log.txt || true
-          git commit -m "Build logs on failure" || true
-          git push origin debug-logs --force || true
+          ./gradlew bundleRelease
 
       - name: Upload to Google Play
         uses: r0adkll/upload-google-play@v1
@@ -62,5 +54,5 @@ jobs:
           serviceAccountJsonPlainText: ${{ secrets.PLAY_CONFIG_JSON }}
           packageName: com.mathx.mastermind
           releaseFiles: android/app/build/outputs/bundle/release/app-release.aab
-          track: internal # Deploy to internal test track first
+          track: internal
           status: completed
