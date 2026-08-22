@@ -9,10 +9,14 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          ref: main
 
       - name: Set up Java JDK
         uses: actions/setup-java@v4
@@ -47,24 +51,17 @@ jobs:
         run: chmod +x android/gradlew
 
       - name: Copy web assets to Android
-        run: |
-          mkdir -p android/app/src/main/assets/public
-          cp -r dist/* android/app/src/main/assets/public/
-          npx cap copy android
+        run: npx cap copy android > cap-copy-log.txt 2>&1
+        continue-on-error: true
 
       - name: Update Android plugins
-        run: npx cap update android
+        run: npx cap update android > cap-update-log.txt 2>&1
+        continue-on-error: true
 
-      - name: Build Release Bundle (AAB)
+      - name: Commit and Push Logs
         run: |
-          cd android
-          ./gradlew bundleRelease
-
-      - name: Upload to Google Play
-        uses: r0adkll/upload-google-play@v1
-        with:
-          serviceAccountJsonPlainText: ${{ secrets.PLAY_CONFIG_JSON }}
-          packageName: com.mathx.mastermind
-          releaseFiles: android/app/build/outputs/bundle/release/app-release.aab
-          track: internal
-          status: completed
+          git config --local user.email "bot@antigravity.ai"
+          git config --local user.name "Antigravity Bot"
+          git add cap-copy-log.txt cap-update-log.txt || true
+          git commit -m "Debug logs for cap commands" || true
+          git push origin main
