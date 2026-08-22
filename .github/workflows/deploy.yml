@@ -54,21 +54,8 @@ jobs:
       - name: Build Release Bundle (AAB)
         run: |
           cd android
-          ./gradlew bundleRelease > gradle-log.txt 2>&1 || true
+          ./gradlew bundleRelease
 
-      - name: Push log
-        run: |
-          git config --local user.email "bot@antigravity.ai"
-          git config --local user.name "Antigravity Bot"
-          git stash || true
-          git fetch origin main
-          git checkout main
-          git pull origin main --rebase
-          cp android/gradle-log.txt gradle-error-log-$(date +%s).txt
-          git add .
-          git commit -m "Update gradle error log" || true
-          git push origin main
-          
       - name: Upload to Google Play
         uses: r0adkll/upload-google-play@v1
         with:
