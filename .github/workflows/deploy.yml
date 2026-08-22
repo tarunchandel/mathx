@@ -56,15 +56,15 @@ jobs:
           cd android
           ./gradlew bundleRelease > gradle-log.txt 2>&1 || true
 
-      - name: Push log if failed
+      - name: Push log
         run: |
           git config --local user.email "bot@antigravity.ai"
           git config --local user.name "Antigravity Bot"
           git fetch origin main
           git checkout main
           git pull origin main --rebase
-          cp android/gradle-log.txt gradle-error-log.txt
-          git add gradle-error-log.txt
+          cp android/gradle-log.txt gradle-error-log-$(date +%s).txt
+          git add .
           git commit -m "Update gradle error log" || true
           git push origin main
           
