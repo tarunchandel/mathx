@@ -1,0 +1,51 @@
+name: Deploy to Google Play
+
+on:
+  push:
+    tags:
+      - 'v*' # Trigger on release tags (e.g., v1.0.0)
+  workflow_dispatch: # Enable manual triggers
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Java JDK
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'zulu'
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build web assets
+        run: npm run build
+
+      - name: Sync Capacitor
+        run: npx cap sync android
+
+      - name: Build Release Bundle (AAB)
+        run: |
+          cd android
+          chmod +x gradlew
+          ./gradlew bundleRelease
+
+      - name: Upload to Google Play
+        uses: r0adrunner/play-publisher@v1.4.1
+        with:
+          serviceAccountJsonPlain: ${{ secrets.PLAY_CONFIG_JSON }}
+          packageName: com.mathx.mastermind
+          releaseFiles: android/app/build/outputs/bundle/release/app-release.aab
+          track: internal # Deploy to internal test track first
+          status: completed
