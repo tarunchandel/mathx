@@ -54,22 +54,25 @@ jobs:
         run: npx cap sync android
 
       - name: Build Release Bundle (AAB)
+        id: build_bundle
         run: |
           cd android
           ./gradlew bundleRelease > gradle-log.txt 2>&1
         continue-on-error: true
 
       - name: Check if Gradle failed and upload log
+        if: steps.build_bundle.outcome == 'failure' || hashFiles('android/app/build/outputs/bundle/release/app-release.aab') == ''
         run: |
-          if [ ! -f "android/app/build/outputs/bundle/release/app-release.aab" ]; then
-            git config --local user.email "bot@antigravity.ai"
-            git config --local user.name "Antigravity Bot"
-            cp android/gradle-log.txt gradle-error-log.txt
-            git add gradle-error-log.txt
-            git commit -m "Add gradle error log" || true
-            git push origin main
-            exit 1
-          fi
+          git config --local user.email "bot@antigravity.ai"
+          git config --local user.name "Antigravity Bot"
+          git fetch origin main
+          git checkout main
+          git pull origin main --rebase
+          cp android/gradle-log.txt gradle-error-log.txt
+          git add gradle-error-log.txt
+          git commit -m "Add gradle error log" || true
+          git push origin main
+          exit 1
 
       - name: Upload to Google Play
         uses: r0adkll/upload-google-play@v1
