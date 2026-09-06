@@ -137,4 +137,207 @@ function getSmartTip(questions) {
   return getTip(uniqueOps);
 }
 
-export { getTip, getSmartTip, TIPS };
+/**
+ * Generate a dynamic step-by-step mental math solution for any question
+ */
+function generateStepByStepMentalSolution(q) {
+  const { a, b, operator: op, answer } = q;
+  const numA = Number(a);
+  const numB = Number(b);
+
+  if (op === '+') {
+    // If one number ends close to 10
+    const remB = numB % 10;
+    if (remB >= 7 && numB > 10) {
+      const up = 10 - remB;
+      const friendly = numB + up;
+      return {
+        strategy: 'Round & Adjust (Friendly Tens)',
+        steps: [
+          `Round ${numB} up to ${friendly} (add ${up})`,
+          `${numA} + ${friendly} = ${numA + friendly}`,
+          `Subtract the extra ${up}: ${numA + friendly} - ${up} = ${answer}`,
+        ],
+        tip: 'Rounding to a friendly ten avoids complicated mental carrying.'
+      };
+    }
+
+    // Left to right place value breakdown
+    if (numA >= 10 || numB >= 10) {
+      const tensA = Math.floor(numA / 10) * 10;
+      const onesA = numA - tensA;
+      const tensB = Math.floor(numB / 10) * 10;
+      const onesB = numB - tensB;
+
+      if (tensA > 0 && tensB > 0) {
+        return {
+          strategy: 'Left-to-Right Place Value',
+          steps: [
+            `Add the tens: ${tensA} + ${tensB} = ${tensA + tensB}`,
+            `Add the units: ${onesA} + ${onesB} = ${onesA + onesB}`,
+            `Combine both parts: ${tensA + tensB} + ${onesA + onesB} = ${answer}`,
+          ],
+          tip: 'Mental math is faster when processing highest place values first.'
+        };
+      }
+    }
+
+    return {
+      strategy: 'Direct Combination',
+      steps: [`Combine ${numA} and ${numB} to get ${answer}`],
+      tip: 'Practice instant number-bond recall for small sums.'
+    };
+  }
+
+  if (op === '-') {
+    const remB = numB % 10;
+    // Compensation
+    if (remB >= 7 && numB >= 10) {
+      const bump = 10 - remB;
+      const friendlyB = numB + bump;
+      return {
+        strategy: 'Equal Difference Shift',
+        steps: [
+          `Shift both numbers up by ${bump} so we subtract a clean ten:`,
+          `(${numA} + ${bump}) - (${numB} + ${bump}) = ${numA + bump} - ${friendlyB}`,
+          `${numA + bump} - ${friendlyB} = ${answer}`,
+        ],
+        tip: 'Subtracting round numbers like 20, 30, or 50 is effortless in your head.'
+      };
+    }
+
+    // Distance method
+    if (numA > numB && numB >= 10) {
+      const nextTen = Math.ceil(numB / 10) * 10;
+      const step1 = nextTen - numB;
+      const step2 = numA - nextTen;
+      return {
+        strategy: 'Count-Up Distance Method',
+        steps: [
+          `Count up from ${numB} to next milestone ${nextTen}: +${step1}`,
+          `Count from ${nextTen} to target ${numA}: +${step2}`,
+          `Total distance: ${step1} + ${step2} = ${answer}`,
+        ],
+        tip: 'Counting forward treats subtraction as a forward road trip.'
+      };
+    }
+
+    return {
+      strategy: 'Direct Distance',
+      steps: [`Distance from ${numB} to ${numA} is ${answer}`],
+      tip: 'Visualize the number line gap between the two values.'
+    };
+  }
+
+  if (op === '×') {
+    // Multiply by 5
+    if (numB === 5 || numA === 5) {
+      const other = numB === 5 ? numA : numB;
+      return {
+        strategy: 'Multiply by 10 then Halve',
+        steps: [
+          `${other} × 10 = ${other * 10}`,
+          `Divide by 2: ${other * 10} ÷ 2 = ${answer}`,
+        ],
+        tip: '5 is just 10 ÷ 2. Adding a zero and taking half is lightning fast.'
+      };
+    }
+
+    // Multiply by 9
+    if (numB === 9 || numA === 9) {
+      const other = numB === 9 ? numA : numB;
+      return {
+        strategy: 'Multiply by 10 and Subtract',
+        steps: [
+          `${other} × 10 = ${other * 10}`,
+          `Subtract ${other}: ${other * 10} - ${other} = ${answer}`,
+        ],
+        tip: '9 groups of a number is 10 groups minus 1 group.'
+      };
+    }
+
+    // Multiply by 11
+    if (numB === 11 || numA === 11) {
+      const other = numB === 11 ? numA : numB;
+      if (other < 100) {
+        const d1 = Math.floor(other / 10);
+        const d2 = other % 10;
+        return {
+          strategy: 'Vedic 11 Sandwich Shortcut',
+          steps: [
+            `Sum of digits: ${d1} + ${d2} = ${d1 + d2}`,
+            `Sandwich the sum between the digits: ${answer}`,
+          ],
+          tip: 'When multiplying a 2-digit number by 11, place their sum in the center!'
+        };
+      }
+    }
+
+    // Distributive
+    if (numA >= 10 || numB >= 10) {
+      const factor = numA >= 10 ? numA : numB;
+      const mult = numA >= 10 ? numB : numA;
+      const tens = Math.floor(factor / 10) * 10;
+      const ones = factor - tens;
+      return {
+        strategy: 'Distributive Chunking',
+        steps: [
+          `Multiply tens: ${tens} × ${mult} = ${tens * mult}`,
+          `Multiply ones: ${ones} × ${mult} = ${ones * mult}`,
+          `Add products: ${tens * mult} + ${ones * mult} = ${answer}`,
+        ],
+        tip: 'Break hard numbers into easy chunks, then combine.'
+      };
+    }
+
+    return {
+      strategy: 'Times Table Recall',
+      steps: [`Recall times tables: ${numA} × ${numB} = ${answer}`],
+      tip: 'Consistent practice solidifies automatic mental times-table retrieval.'
+    };
+  }
+
+  if (op === '÷') {
+    // Divide by 5
+    if (numB === 5) {
+      return {
+        strategy: 'Double and Divide by 10',
+        steps: [
+          `Double the number: ${numA} × 2 = ${numA * 2}`,
+          `Divide by 10 (shift decimal left): ${numA * 2} ÷ 10 = ${answer}`,
+        ],
+        tip: 'Dividing by 5 is the mirror shortcut of multiplying by 5.'
+      };
+    }
+
+    // Factors of 4 or 8
+    if (numB === 4) {
+      return {
+        strategy: 'Double Halving',
+        steps: [
+          `First halve: ${numA} ÷ 2 = ${numA / 2}`,
+          `Halve again: ${numA / 2} ÷ 2 = ${answer}`,
+        ],
+        tip: 'Dividing by 4 is always two consecutive halves.'
+      };
+    }
+
+    return {
+      strategy: 'Inverse Multiplication',
+      steps: [
+        `Think: "${numB} × ? = ${numA}"`,
+        `Since ${numB} × ${answer} = ${numA}, the answer is ${answer}`,
+      ],
+      tip: 'Turn division into finding the missing partner in multiplication.'
+    };
+  }
+
+  return {
+    strategy: 'Calculation',
+    steps: [`${q.display} = ${answer}`],
+    tip: 'Keep numbers modular and friendly.'
+  };
+}
+
+export { getTip, getSmartTip, generateStepByStepMentalSolution, TIPS };
+

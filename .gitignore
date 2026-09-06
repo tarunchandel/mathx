@@ -22,3 +22,13 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Credentials & Keystores
+*service-account*.json
+*.keystore
+*.jks
+
+# Build artifacts & temp scripts
+test-play-api.cjs
+generate_assets.cjs
+play_store_assets/

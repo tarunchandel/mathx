@@ -134,6 +134,7 @@ const DEFAULT_STATE = {
   // Settings
   haptics: true,
   soundEffects: true,
+  showMentalMath: true, // Default mental math explanations on after practice answers
 };
 
 // ---------- Profile Registry ----------
@@ -524,17 +525,56 @@ class StateManager {
     return null;
   }
 
+  // Check if 21-day habit power (5x multiplier) is active
+  hasHabitPower() {
+    return (this.state.streakCount || 0) >= 21;
+  }
+
+  // Check milestone bonus on every 50 days (50, 100, 150, ...)
+  getMilestoneBonus(streak) {
+    const s = streak || this.state.streakCount;
+    if (s >= 50 && s % 50 === 0) {
+      const mult = s / 50;
+      return {
+        coins: 10000 * mult,
+        plectrums: 20 * mult,
+        label: `${s} Day Legend Milestone!`
+      };
+    }
+    return null;
+  }
+
   getStreakReward() {
     const streak = this.state.streakCount;
-    return Math.min(Math.pow(2, streak), 10000);
+    let base = Math.min(Math.pow(2, streak), 10000);
+    // Add extra milestone bonus if today is a 50-day multiple
+    const milestone = this.getMilestoneBonus(streak);
+    if (milestone) {
+      base += milestone.coins;
+    }
+    return base;
   }
 
   collectStreakReward() {
     if (this.state.streakRewardCollected) return 0;
     const reward = this.getStreakReward();
     this.addCoins(reward);
+    const milestone = this.getMilestoneBonus(this.state.streakCount);
+    if (milestone && milestone.plectrums) {
+      this.state.goldenPlectrums += milestone.plectrums;
+      this._notify('goldenPlectrums', this.state.goldenPlectrums);
+    }
     this.set('streakRewardCollected', true);
     return reward;
+  }
+
+  // Calculate coins for completed practice set
+  calculatePracticeCoins(level, correctCount) {
+    const basePerCorrect = Math.max(5, (Number(level) || 1) * 10);
+    let coins = correctCount * basePerCorrect;
+    if (correctCount === 10) coins += (Number(level) || 1) * 50; // Perfect drill bonus
+    if (this.hasHabitPower()) coins *= 5; // 5x habit power
+    return coins;
   }
 
   isCoffeeBoostActive() {

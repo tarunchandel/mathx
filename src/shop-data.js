@@ -87,7 +87,22 @@ const SHOP_CATEGORIES = {
       { id: 'vaporwaveDark',     name: 'Vaporwave · Dark',    emoji: '🌴', description: 'Hyper-saturated magenta & cyan glow over a midnight grid. Pure 80s energy.', price: 5500, currency: 'coins', themeId: 'vaporwave-dark', mode: 'dark' },
       { id: 'vaporwaveLight',    name: 'Vaporwave · Light',   emoji: '🏝️', description: 'Sun-bleached pastel vaporwave. Cotton-candy magenta & cyan on ivory.', price: 5500, currency: 'coins', themeId: 'vaporwave-light', mode: 'light' },
       { id: 'citrusDark',        name: 'Citrus · Dark',       emoji: '🍊', description: 'Electric lime & tangerine punch against a charcoal backdrop. Zero chill.', price: 4000, currency: 'coins', themeId: 'citrus-dark', mode: 'dark' },
-      { id: 'citrusLight',       name: 'Citrus · Light',      emoji: '🍋', description: 'Sunlit lime & tangerine on crisp ivory. Wakes up your whole screen.', price: 4000, currency: 'coins', themeId: 'citrus-light', mode: 'light' }
+      { id: 'citrusLight',       name: 'Citrus · Light',      emoji: '🍋', description: 'Sunlit lime & tangerine on crisp ivory. Wakes up your whole screen.', price: 4000, currency: 'coins', themeId: 'citrus-light', mode: 'light' },
+      // === Retro Themes Collection ===
+      { id: 'retroBwDark',       name: 'Retro B&W · Dark',    emoji: '♟️', description: 'Pure high-contrast monochrome void. Vintage ink & screen.', price: 3000, currency: 'coins', themeId: 'retroBwDark', mode: 'dark' },
+      { id: 'retroBwLight',      name: 'Retro B&W · Light',   emoji: '📄', description: 'Clean monochrome paper & jet-black ink. Timeless clarity.', price: 3000, currency: 'coins', themeId: 'retroBwLight', mode: 'light' },
+      // 5 Retro Dark themes
+      { id: 'retroAmberDark',    name: 'CRT Amber · Dark',    emoji: '📟', description: '1980s glowing amber phosphor terminal on deep obsidian.', price: 3500, currency: 'coins', themeId: 'retroAmberDark', mode: 'dark' },
+      { id: 'retroGreenDark',    name: 'Phosphor Green · Dark', emoji: '🟢', description: 'Classic IBM 5151 monochrome matrix green terminal glow.', price: 3500, currency: 'coins', themeId: 'retroGreenDark', mode: 'dark' },
+      { id: 'retroArcadeDark',   name: 'Arcade 1984 · Dark',  emoji: '🕹️', description: 'Coin-op arcade neon cyan and coin-gold in the shadows.', price: 4200, currency: 'coins', themeId: 'retroArcadeDark', mode: 'dark' },
+      { id: 'retroSynthDark',    name: 'Synthwave · Dark',    emoji: '🌆', description: 'Dusk purple horizon with blazing neon orange and magenta.', price: 4500, currency: 'coins', themeId: 'retroSynthDark', mode: 'dark' },
+      { id: 'retroCassetteDark', name: 'Cassette Tape · Dark', emoji: '📼', description: 'Matte charcoal tape with warm vintage orange & cream stripes.', price: 4800, currency: 'coins', themeId: 'retroCassetteDark', mode: 'dark' },
+      // 5 Retro Light themes
+      { id: 'retroGameBoyLight', name: 'Game Boy · Light',    emoji: '🎮', description: 'Classic 1989 dot-matrix olive-green LCD handheld nostalgia.', price: 3500, currency: 'coins', themeId: 'retroGameBoyLight', mode: 'light' },
+      { id: 'retroAmberLight',   name: 'Newsprint · Light',   emoji: '📰', description: 'Vintage sepia broadsheet parchment with deep coffee ink.', price: 3500, currency: 'coins', themeId: 'retroAmberLight', mode: 'light' },
+      { id: 'retroGreenLight',   name: 'Chalkboard · Light',  emoji: '📋', description: 'Sage desk blotter with crisp vintage chalkboard green accents.', price: 4200, currency: 'coins', themeId: 'retroGreenLight', mode: 'light' },
+      { id: 'retroMiamiLight',   name: 'Miami 80s · Light',   emoji: '🦩', description: 'Sun-drenched pastel turquoise and flamingo coral art deco.', price: 4500, currency: 'coins', themeId: 'retroMiamiLight', mode: 'light' },
+      { id: 'retroBlueprintLight', name: 'Blueprint · Light', emoji: '📐', description: 'Architectural drafting cyan with bright white technical ink.', price: 4800, currency: 'coins', themeId: 'retroBlueprintLight', mode: 'light' }
     ]
   },
   status: {
@@ -131,23 +146,47 @@ const SHOP_CATEGORIES = {
       { id: 'godModeBadge',  name: 'God Mode Badge',    emoji: '🌠', description: 'A pulsing celestial badge — the rarest flex.',            price: 300, currency: 'plectrums', unique: true, statusKey: 'godModeBadge' },
     ]
   },
-  // === NEW TAB 1: Avatars ===
+  // === Avatars (Includes originals + 20+ Aspirational Avatars) ===
   avatars: {
     label: 'Avatars',
     emoji: '🦸',
     items: [
-      { id: 'avatarRobot',     name: 'Robo',         emoji: '🤖', description: 'A friendly mathbot avatar.',         price: 800,  currency: 'coins', unique: true, avatarKey: '🤖' },
-      { id: 'avatarUnicorn',   name: 'Unicorn',      emoji: '🦄', description: 'Magical math unicorn.',              price: 1200, currency: 'coins', unique: true, avatarKey: '🦄' },
-      { id: 'avatarDragon',    name: 'Dragon',       emoji: '🐉', description: 'Wise calculation dragon.',           price: 1500, currency: 'coins', unique: true, avatarKey: '🐉' },
-      { id: 'avatarNinja',     name: 'Math Ninja',   emoji: '🥷', description: 'Stealthy. Speedy. Sums.',            price: 1300, currency: 'coins', unique: true, avatarKey: '🥷' },
-      { id: 'avatarAlien',     name: 'Galactic Alien',emoji: '👽',description: 'Visiting from Planet Pi.',           price: 1400, currency: 'coins', unique: true, avatarKey: '👽' },
-      { id: 'avatarKitty',     name: 'Cool Cat',     emoji: '😺', description: 'A cool calculating cat.',            price: 700,  currency: 'coins', unique: true, avatarKey: '😺' },
-      { id: 'avatarPanda',     name: 'Panda',        emoji: '🐼', description: 'Bamboo and binary.',                 price: 900,  currency: 'coins', unique: true, avatarKey: '🐼' },
-      { id: 'avatarFox',       name: 'Clever Fox',   emoji: '🦊', description: 'Sly and statistical.',               price: 1000, currency: 'coins', unique: true, avatarKey: '🦊' },
-      { id: 'avatarOctopus',   name: 'Octo',         emoji: '🐙', description: 'Eight tentacles, eight times tables.',price: 1600,currency: 'coins', unique: true, avatarKey: '🐙' },
-      { id: 'avatarWizard',    name: 'Math Wizard',  emoji: '🧙', description: 'Casting calculation spells.',         price: 2000, currency: 'coins', unique: true, avatarKey: '🧙' },
-      { id: 'avatarAstronaut', name: 'Astronaut',    emoji: '👨‍🚀',description: 'Doing math at zero-G.',              price: 1800, currency: 'coins', unique: true, avatarKey: '👨‍🚀' },
-      { id: 'avatarSuperhero', name: 'Superhero',    emoji: '🦸', description: 'Saving the world, one quiz at a time.',price: 2200,currency: 'coins', unique: true, avatarKey: '🦸' },
+      // Starter / Playful
+      { id: 'avatarKitty',     name: 'Cool Cat',        emoji: '😺', description: 'A cool calculating cat.',               price: 700,  currency: 'coins', unique: true, avatarKey: '😺' },
+      { id: 'avatarRobot',     name: 'Robo Mathbot',    emoji: '🤖', description: 'A friendly mathbot assistant.',          price: 800,  currency: 'coins', unique: true, avatarKey: '🤖' },
+      { id: 'avatarPanda',     name: 'Panda Sage',      emoji: '🐼', description: 'Bamboo and binary precision.',           price: 900,  currency: 'coins', unique: true, avatarKey: '🐼' },
+      { id: 'avatarFox',       name: 'Clever Fox',      emoji: '🦊', description: 'Sly, sharp, and statistical.',           price: 1000, currency: 'coins', unique: true, avatarKey: '🦊' },
+      { id: 'avatarUnicorn',   name: 'Math Unicorn',    emoji: '🦄', description: 'Magical calculating unicorn.',           price: 1200, currency: 'coins', unique: true, avatarKey: '🦄' },
+      { id: 'avatarNinja',     name: 'Math Ninja',      emoji: '🥷', description: 'Stealthy, speedy mental sums.',          price: 1300, currency: 'coins', unique: true, avatarKey: '🥷' },
+      { id: 'avatarAlien',     name: 'Galactic Alien',  emoji: '👽', description: 'Visiting genius from Planet Pi.',        price: 1400, currency: 'coins', unique: true, avatarKey: '👽' },
+      { id: 'avatarDragon',    name: 'Wise Dragon',     emoji: '🐉', description: 'Ancient master of fiery computation.',    price: 1500, currency: 'coins', unique: true, avatarKey: '🐉' },
+      { id: 'avatarOctopus',   name: 'Octo-Brain',      emoji: '🐙', description: 'Eight tentacles, eight times tables.',   price: 1600, currency: 'coins', unique: true, avatarKey: '🐙' },
+      { id: 'avatarAstronaut', name: 'Astronaut',       emoji: '👨‍🚀', description: 'Calculating orbits at zero-G.',         price: 1800, currency: 'coins', unique: true, avatarKey: '👨‍🚀' },
+      { id: 'avatarWizard',    name: 'Math Wizard',     emoji: '🧙', description: 'Casting algorithmic spells.',            price: 2000, currency: 'coins', unique: true, avatarKey: '🧙' },
+      { id: 'avatarSuperhero', name: 'Superhero',       emoji: '🦸', description: 'Saving the universe, one sum at a time.',price: 2200, currency: 'coins', unique: true, avatarKey: '🦸' },
+      
+      // === 20+ Aspirational & Elite Avatars ===
+      { id: 'avatarEagle',     name: 'Apex Eagle',      emoji: '🦅', description: 'Soaring vision and laser focus.',        price: 2400, currency: 'coins', unique: true, avatarKey: '🦅' },
+      { id: 'avatarCheetah',   name: 'Speed Cheetah',   emoji: '🐆', description: 'Fastest reflexes on timed questions.',   price: 2600, currency: 'coins', unique: true, avatarKey: '🐆' },
+      { id: 'avatarWolf',      name: 'Shadow Wolf',     emoji: '🐺', description: 'Relentless instinct and midnight hunger.',price: 2800, currency: 'coins', unique: true, avatarKey: '🐺' },
+      { id: 'avatarLion',      name: 'Apex Lion',       emoji: '🦁', description: 'The undisputed ruler of mental math.',   price: 3000, currency: 'coins', unique: true, avatarKey: '🦁' },
+      { id: 'avatarSamurai',   name: 'Ronin Samurai',   emoji: '⚔️', description: 'Honorable discipline and razor focus.',   price: 3200, currency: 'coins', unique: true, avatarKey: '⚔️' },
+      { id: 'avatarZeus',      name: 'Thunder Titan',   emoji: '⚡', description: 'Harness the lightning speed of calculations.', price: 3500, currency: 'coins', unique: true, avatarKey: '⚡' },
+      { id: 'avatarChampion',  name: 'Grand Champion',  emoji: '🏆', description: 'Born to conquer every leaderboard.',     price: 3800, currency: 'coins', unique: true, avatarKey: '🏆' },
+      { id: 'avatarFirePhoenix', name: 'Solar Phoenix', emoji: '🔥', description: 'Reborn stronger from every wrong turn.', price: 4000, currency: 'coins', unique: true, avatarKey: '🔥' },
+      { id: 'avatarKitsune',   name: 'Zen Kitsune',     emoji: '⛩️', description: 'Nine-tailed mythical mathematical wisdom.',price: 4200, currency: 'coins', unique: true, avatarKey: '⛩️' },
+      { id: 'avatarCyberCyborg', name: 'Quantum Cyborg',emoji: '🦾', description: 'Neural-enhanced calculation hardware.',  price: 4500, currency: 'coins', unique: true, avatarKey: '🦾' },
+      { id: 'avatarSaturn',    name: 'Cosmic Saturnian', emoji: '🪐', description: 'Deep cosmic traveler beyond planetary limits.', price: 4800, currency: 'coins', unique: true, avatarKey: '🪐' },
+      { id: 'avatarGrandSensei', name: 'Grand Sensei',  emoji: '🥋', description: 'Decades of math mastery distilled into speed.', price: 5000, currency: 'coins', unique: true, avatarKey: '🥋' },
+      { id: 'avatarBullseye',  name: 'Bullseye Deadeye', emoji: '🎯', description: 'Zero misses. Every answer on target.',    price: 5200, currency: 'coins', unique: true, avatarKey: '🎯' },
+      { id: 'avatarSorcerer',  name: 'Archmage Supreme', emoji: '🔮', description: 'Conjures perfect solutions from the ether.',price: 5500, currency: 'coins', unique: true, avatarKey: '🔮' },
+      { id: 'avatarDiamondMind', name: 'Diamond Mind',  emoji: '💎', description: 'Flawless pressure-formed intellect.',     price: 6000, currency: 'coins', unique: true, avatarKey: '💎' },
+      { id: 'avatarVoyager',   name: 'Deep Voyager',    emoji: '🚀', description: 'Pioneering unseen boundaries of speed.',  price: 6500, currency: 'coins', unique: true, avatarKey: '🚀' },
+      { id: 'avatarSupernova', name: 'Supernova Burst', emoji: '🌟', description: 'Radiating pure incandescent energy.',    price: 7000, currency: 'coins', unique: true, avatarKey: '🌟' },
+      { id: 'avatarPegasus',   name: 'Celestial Pegasus', emoji: '✨', description: 'Winged elegance navigating celestial logic.', price: 7500, currency: 'coins', unique: true, avatarKey: '✨' },
+      { id: 'avatarSovereign', name: 'Royal Sovereign', emoji: '👑', description: 'Crowned monarch of numerical dynasties.',price: 8000, currency: 'coins', unique: true, avatarKey: '👑' },
+      { id: 'avatarWyrm',      name: 'Infinity Wyrm',   emoji: '🐲', description: 'Mythic primordial sovereign of all numbers.', price: 8888, currency: 'coins', unique: true, avatarKey: '🐲' },
+      { id: 'avatarGalaxyGod', name: 'Omni Cosmos',     emoji: '🌌', description: 'The universe itself bent into a calculator.', price: 10000, currency: 'coins', unique: true, avatarKey: '🌌' },
     ]
   },
   // === NEW TAB 2: Bundles (mixed-currency curated bundles) ===
@@ -171,10 +210,11 @@ const SHOP_CATEGORIES = {
 };
 
 /**
- * Get all items for a category
+ * Get all items for a category (always sorted by price ascending)
  */
 function getShopItems(category) {
-  return SHOP_CATEGORIES[category]?.items || [];
+  const items = SHOP_CATEGORIES[category]?.items ? [...SHOP_CATEGORIES[category].items] : [];
+  return items.sort((a, b) => a.price - b.price);
 }
 
 /**

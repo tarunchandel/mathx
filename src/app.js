@@ -6,9 +6,10 @@
 import { state } from './state.js';
 import { 
   generateQuestionSet, checkAnswer, getLevelConfig, getDifficultyConfig, calculateCoins, LEVEL_CONFIG,
-  generatePracticeSet, getAvailableOps, SKILL_CONFIG, PRACTICE_POINTS_REQUIRED, PRACTICE_POINTS_PER_CORRECT
+  generatePracticeSet, getAvailableOps, SKILL_CONFIG, PRACTICE_POINTS_REQUIRED, PRACTICE_POINTS_PER_CORRECT,
+  getPrePracticeLesson
 } from './engine.js';
-import { getSmartTip } from './tips.js';
+import { getSmartTip, generateStepByStepMentalSolution } from './tips.js';
 import { SHOP_CATEGORIES, getShopCategories, getItemStatus } from './shop-data.js';
 import { SFX, Haptics } from './audio.js';
 
@@ -457,8 +458,9 @@ export class App {
     // Bindings
     document.querySelectorAll('.practice-opt').forEach(opt => {
       opt.onclick = () => {
+        const op = opt.dataset.op;
         this.hideLevelModal();
-        setTimeout(() => this.startPractice(level, opt.dataset.op), 300);
+        setTimeout(() => this.showPracticeLessonModal(level, op), 300);
       };
     });
 
@@ -468,6 +470,51 @@ export class App {
         setTimeout(() => this.startGame(level, opt.dataset.diff), 300);
       };
     });
+  }
+
+  showPracticeLessonModal(level, op) {
+    const lesson = getPrePracticeLesson(level, op);
+    const skill = SKILL_CONFIG[op] || { label: 'Practice Drill', emoji: '🧠' };
+
+    let modal = document.getElementById('lessonModal');
+    if (!modal) {
+      modal = document.createElement('div');
+      modal.id = 'lessonModal';
+      modal.className = 'lesson-modal';
+      document.body.appendChild(modal);
+    }
+
+    modal.innerHTML = `
+      <div class="purchase-modal-bg" id="lessonModalBg"></div>
+      <div class="lesson-card">
+        <div class="lesson-header">
+          <div class="lesson-icon">${skill.emoji}</div>
+          <div class="lesson-title-area">
+            <div class="lesson-tag">Level ${level} Concept Drill</div>
+            <div class="lesson-title">${lesson.title}</div>
+          </div>
+        </div>
+        <div class="lesson-body">
+          <div class="lesson-rule">💡 ${lesson.rule}</div>
+          <div class="lesson-example">${lesson.example}</div>
+          <div class="lesson-tip">⭐ Pro Tip: ${lesson.tip}</div>
+        </div>
+        <div style="display: flex; gap: var(--space-sm);">
+          <button class="btn btn-secondary btn-full" id="lessonCloseBtn">Cancel</button>
+          <button class="btn btn-primary btn-full btn-lg" id="lessonStartBtn">Start Practice Drill ›</button>
+        </div>
+      </div>
+    `;
+
+    modal.classList.add('show');
+
+    const closeLesson = () => modal.classList.remove('show');
+    document.getElementById('lessonModalBg').onclick = closeLesson;
+    document.getElementById('lessonCloseBtn').onclick = closeLesson;
+    document.getElementById('lessonStartBtn').onclick = () => {
+      closeLesson();
+      this.startPractice(level, op);
+    };
   }
 
   hideLevelModal() {
@@ -513,19 +560,26 @@ export class App {
   }
 
   showPowerupPicker(level, difficulty) {
-    const diffConfig = getDifficultyConfig(difficulty);
+    const diffConfig = getDifficultyConfig(difficulty, level);
     const inv = state.get('inventory') || {};
-    // Whitelist of powerups that auto-arm at quiz start.
+    // All 14 Shop Powerups + armable boosts
     const armable = [
-      { key: 'safetyPins',  name: 'Safety Pin',   emoji: '🧷', desc: 'Absorbs 1 wrong answer.' },
-      { key: 'timeWarps',   name: 'Time Warp',    emoji: '⏳', desc: '+5s on every timed question.', timedOnly: true },
-      { key: 'greatEscapes',name: 'Great Escape', emoji: '🪂', desc: 'Keep coins on Great Reset.' },
-      { key: 'shieldWall',  name: 'Shield Wall',  emoji: '🛡️', desc: 'Auto-absorbs first wrong answer.' },
-      { key: 'luckyClover', name: 'Lucky Clover', emoji: '🍀', desc: '+15% Lucky 13 chance this set.' },
-      { key: 'goldRush',    name: 'Gold Rush',    emoji: '💰', desc: 'Triples one correct answer reward.' },
-      { key: 'rocketFuel',  name: 'Rocket Fuel',  emoji: '🚀', desc: '3× coins for this entire set.' },
-      { key: 'cloverChain', name: 'Clover Chain', emoji: '☘️', desc: 'Streak bonus stacks per correct.' },
-      { key: 'crystalBall', name: 'Crystal Ball', emoji: '🔮', desc: 'Reveals first digit of Q1.' },
+      { key: 'safetyPins',      name: 'Safety Pin',        emoji: '🧷', desc: 'Absorbs 1 wrong answer.' },
+      { key: 'timeWarps',       name: 'Time Warp',         emoji: '⏳', desc: '+5s on every timed question.', timedOnly: true },
+      { key: 'greatEscapes',    name: 'Great Escape',      emoji: '🪂', desc: 'Keep coins on Great Reset.' },
+      { key: 'shieldWall',      name: 'Shield Wall',       emoji: '🛡️', desc: 'Auto-absorbs first wrong answer.' },
+      { key: 'luckyClover',     name: 'Lucky Clover',      emoji: '🍀', desc: '+15% Lucky 13 chance this set.' },
+      { key: 'goldRush',        name: 'Gold Rush',         emoji: '💰', desc: 'Triples one correct answer reward.' },
+      { key: 'rocketFuel',      name: 'Rocket Fuel',       emoji: '🚀', desc: '3× coins for this entire set.' },
+      { key: 'cloverChain',     name: 'Clover Chain',      emoji: '☘️', desc: 'Streak bonus stacks per correct.' },
+      { key: 'crystalBall',     name: 'Crystal Ball',      emoji: '🔮', desc: 'Reveals first digit of Q1.' },
+      { key: 'fiftyFifty',      name: '50/50',             emoji: '🎯', desc: 'Eliminates distraction digits.' },
+      { key: 'mirrorMirror',    name: 'Mirror Mirror',     emoji: '🪞', desc: 'Swaps questions to easier sibling forms.' },
+      { key: 'autoSolve',       name: 'Auto-Solve',        emoji: '🤖', desc: 'Auto-solves the first question.' },
+      { key: 'hintMaster',      name: 'Hint Master',       emoji: '💡', desc: 'Shows Arthur Benjamin mental math hints.' },
+      { key: 'phoneAFriend',    name: 'Phone a Friend',    emoji: '📞', desc: 'Skips 1 problem without penalty.' },
+      { key: 'rewindTime',      name: 'Rewind Time',       emoji: '⏪', desc: 'Gives a second chance on timeout/mistake.' },
+      { key: 'doubleOrNothing', name: 'Double or Nothing', emoji: '🎲', desc: '2× set coin payout if 100% correct.' },
     ].filter(p => (inv[p.key] || 0) > 0 && (!p.timedOnly || diffConfig.timer));
 
     const screen = document.getElementById('screen-game');
@@ -576,8 +630,25 @@ export class App {
   }
 
   _actuallyStartGame(level, difficulty, armed = {}) {
-    const questions = generateQuestionSet(level);
-    const diffConfig = getDifficultyConfig(difficulty);
+    let questions = generateQuestionSet(level);
+    const diffConfig = getDifficultyConfig(difficulty, level);
+
+    // Mirror Mirror effect: simplifies questions in the set
+    if (armed.mirrorMirror) {
+      questions = questions.map(q => {
+        if (q.operator === '+' && q.b > 20) {
+          const simplifiedB = Math.round(q.b / 10) * 10;
+          const newAns = Math.round((q.a + simplifiedB) * 100) / 100;
+          return { ...q, b: simplifiedB, answer: newAns, display: `${q.a} + ${simplifiedB}` };
+        }
+        if (q.operator === '×' && q.b > 9 && q.b % 5 !== 0) {
+          const simplifiedB = 5;
+          const newAns = Math.round((q.a * simplifiedB) * 100) / 100;
+          return { ...q, b: simplifiedB, answer: newAns, display: `${q.a} × ${simplifiedB}` };
+        }
+        return q;
+      });
+    }
 
     this.gameState = {
       level,
@@ -595,7 +666,7 @@ export class App {
 
       // Armed powerup flags
       armed: armed,
-      safetyArmed: !!(armed.safetyPins || armed.shieldWall),
+      safetyArmed: !!(armed.safetyPins || armed.shieldWall || armed.rewindTime),
       greatEscapeActive: !!armed.greatEscapes,
       luckyCloverActive: !!armed.luckyClover,
       goldRushAvailable: !!armed.goldRush,
@@ -604,6 +675,12 @@ export class App {
       consecutiveCorrect: 0,
       timeWarpActive: !!armed.timeWarps,
       crystalBallActive: !!armed.crystalBall,
+      fiftyFiftyActive: !!armed.fiftyFifty,
+      mirrorMirrorActive: !!armed.mirrorMirror,
+      autoSolveActive: !!armed.autoSolve,
+      hintMasterActive: !!armed.hintMaster,
+      phoneAFriendAvailable: !!armed.phoneAFriend,
+      doubleOrNothingActive: !!armed.doubleOrNothing,
     };
 
     this.renderGameScreen();
@@ -645,6 +722,51 @@ export class App {
       crystalHint = `<div class="crystal-hint">🔮 First digit: <b>${ans[0]}</b></div>`;
     }
 
+    // Hint Master powerup: show hint immediately if armed
+    let hintMasterCard = '';
+    if (gs.hintMasterActive) {
+      const sol = generateStepByStepMentalSolution(q);
+      hintMasterCard = `
+        <div class="mental-math-card" style="margin-bottom: var(--space-sm);">
+          <div class="mental-math-badge">💡 Hint Master Active</div>
+          <div class="mental-math-strategy">${sol.strategy}</div>
+          <div class="mental-math-tip">⭐ Pro Tip: ${sol.tip}</div>
+        </div>
+      `;
+    }
+
+    // 50/50 powerup: hint that gives two candidate answers (one correct, one close distractor)
+    let fiftyFiftyChip = '';
+    if (gs.fiftyFiftyActive) {
+      const distractor = q.answer + (Math.random() < 0.5 ? 10 : -5);
+      const candidates = Math.random() < 0.5 ? [q.answer, distractor] : [distractor, q.answer];
+      fiftyFiftyChip = `<div class="crystal-hint" style="background: rgba(245, 158, 11, 0.15); border: 1px solid var(--accent-gold);">🎯 50/50: Answer is either <b>${candidates[0]}</b> or <b>${candidates[1]}</b></div>`;
+    }
+
+    // Auto-solve button if active and not yet used
+    let autoSolveBtn = '';
+    if (gs.autoSolveActive && !gs.autoSolveUsed) {
+      autoSolveBtn = `<button class="btn btn-secondary btn-sm" id="btnAutoSolve" style="margin-top: 6px; font-size: var(--fs-xs);">🤖 Use Auto-Solve</button>`;
+    }
+
+    // Phone a Friend skip button if available
+    let phoneFriendBtn = '';
+    if (gs.phoneAFriendAvailable && !gs.phoneFriendUsed) {
+      phoneFriendBtn = `<button class="btn btn-secondary btn-sm" id="btnPhoneFriend" style="margin-top: 6px; font-size: var(--fs-xs);">📞 Phone a Friend (Skip)</button>`;
+    }
+
+    // Practice Mental Math toggle button
+    const mentalMathActive = this.sessionMentalMath !== undefined 
+      ? this.sessionMentalMath 
+      : state.get('showMentalMath');
+    const mentalMathToggleHTML = gs.isPractice ? `
+      <div style="display: flex; justify-content: center; margin-bottom: var(--space-xs);">
+        <button class="mental-math-toggle-btn ${mentalMathActive ? 'active' : ''}" id="togglePracticeMentalMath">
+          💡 Mental Math: <b>${mentalMathActive ? 'ON' : 'OFF'}</b>
+        </button>
+      </div>
+    ` : '';
+
     const screen = document.getElementById('screen-game');
     screen.innerHTML = `
       <div class="game-header">
@@ -660,14 +782,23 @@ export class App {
       </div>
 
       <div class="game-question-area">
+        ${mentalMathToggleHTML}
         <div class="question-number">Question ${gs.currentQuestion + 1} of 10</div>
         <div class="question-text" id="questionText">${q.display}</div>
         ${crystalHint}
+        ${fiftyFiftyChip}
+        ${hintMasterCard}
+        <div style="display: flex; gap: var(--space-xs); justify-content: center;">
+          ${autoSolveBtn}
+          ${phoneFriendBtn}
+        </div>
         <div class="answer-display" id="answerDisplay">
           <span id="answerText">${gs.userAnswer}</span><span class="cursor-blink"></span>
         </div>
+        <div id="mentalMathCardArea"></div>
         <div class="game-coins" id="gameCoins">
           🪙 <span id="setCoins">${gs.setCoins}</span>
+          ${state.hasHabitPower() ? '<span class="habit-power-badge" style="margin-left: 6px;">🔥 5× Habit Power</span>' : ''}
         </div>
       </div>
       
@@ -710,7 +841,53 @@ export class App {
       closeBtn.addEventListener('click', () => this.exitGame());
     }
 
-    // (Powerups are armed pre-quiz and trigger automatically — no in-game buttons.)
+    // Auto-solve action
+    const autoSolveBtn = document.getElementById('btnAutoSolve');
+    if (autoSolveBtn) {
+      autoSolveBtn.addEventListener('click', () => {
+        const gs = this.gameState;
+        if (!gs) return;
+        const q = gs.questions[gs.currentQuestion];
+        gs.userAnswer = String(q.answer);
+        gs.autoSolveUsed = true;
+        const answerText = document.getElementById('answerText');
+        if (answerText) answerText.textContent = gs.userAnswer;
+        this.submitAnswer();
+      });
+    }
+
+    // Phone a Friend action (skips question without penalty)
+    const phoneFriendBtn = document.getElementById('btnPhoneFriend');
+    if (phoneFriendBtn) {
+      phoneFriendBtn.addEventListener('click', () => {
+        const gs = this.gameState;
+        if (!gs) return;
+        gs.phoneFriendUsed = true;
+        this.showToast('📞 Friend called: question skipped!', 'success');
+        this.stopTimer();
+        gs.currentQuestion++;
+        gs.userAnswer = '';
+        if (gs.currentQuestion >= 10) {
+          this.completeSet();
+        } else {
+          this.renderGameScreen();
+          if (gs.diffConfig.timer) this.startTimer();
+          this.questionStartTime = Date.now();
+        }
+      });
+    }
+
+    // Mental Math toggle in Practice mode
+    const togglePracticeMentalMath = document.getElementById('togglePracticeMentalMath');
+    if (togglePracticeMentalMath) {
+      togglePracticeMentalMath.addEventListener('click', () => {
+        const current = this.sessionMentalMath !== undefined 
+          ? this.sessionMentalMath 
+          : state.get('showMentalMath');
+        this.sessionMentalMath = !current;
+        this.renderGameScreen();
+      });
+    }
 
     // Keyboard support
     this._keyHandler = (e) => {
@@ -801,11 +978,16 @@ export class App {
         this.showToast('💰 Gold Rush! 3× this answer', 'gold');
       }
 
-      // Lucky 13
+      // Lucky 13 (13x)
       if (isLucky13) {
         qCoins *= 13;
         this.triggerLucky13();
         state.set('lucky13Count', (state.get('lucky13Count') || 0) + 1);
+      }
+
+      // 21-Day Habit Power (5x multiplier on all coins earned, effectively 65x if Lucky 13 triggered!)
+      if (state.hasHabitPower()) {
+        qCoins *= 5;
       }
 
       gs.setCoins += qCoins;
@@ -814,7 +996,24 @@ export class App {
       const setCoinsEl = document.getElementById('setCoins');
       if (setCoinsEl) setCoinsEl.textContent = gs.setCoins;
 
-      // Move to next question
+      // Practice mode mental math explanation check
+      const showMental = gs.isPractice && (this.sessionMentalMath !== undefined ? this.sessionMentalMath : state.get('showMentalMath'));
+      if (showMental) {
+        this.stopTimer();
+        this.renderMentalMathExplanation(q, () => {
+          gs.currentQuestion++;
+          gs.userAnswer = '';
+          if (gs.currentQuestion >= 10) {
+            this.completeSet();
+          } else {
+            this.renderGameScreen();
+            this.questionStartTime = Date.now();
+          }
+        });
+        return;
+      }
+
+      // Move to next question automatically in normal quiz mode
       setTimeout(() => {
         this.stopTimer();
         gs.currentQuestion++;
@@ -833,9 +1032,28 @@ export class App {
       answerDisplay.classList.add('wrong');
       gs.consecutiveCorrect = 0;
 
-      // Check safety pin
+      // In practice mode, show mental math explanation even on wrong answer to teach the user!
+      const showMental = gs.isPractice && (this.sessionMentalMath !== undefined ? this.sessionMentalMath : state.get('showMentalMath'));
+      if (showMental) {
+        if (state.get('soundEffects')) SFX.wrong();
+        if (state.get('haptics')) Haptics.medium();
+        this.stopTimer();
+        this.renderMentalMathExplanation(q, () => {
+          gs.currentQuestion++;
+          gs.userAnswer = '';
+          if (gs.currentQuestion >= 10) {
+            this.completeSet();
+          } else {
+            this.renderGameScreen();
+            this.questionStartTime = Date.now();
+          }
+        });
+        return;
+      }
+
+      // Check safety pin or rewind time
       if (gs.safetyArmed) {
-        // Safety pin / Shield Wall absorbs the hit
+        // Safety pin / Shield Wall / Rewind Time absorbs the hit
         gs.safetyArmed = false;
         if (state.get('soundEffects')) SFX.wrong();
         if (state.get('haptics')) Haptics.medium();
@@ -852,6 +1070,41 @@ export class App {
 
       // THE GREAT RESET
       this.triggerGreatReset();
+    }
+  }
+
+  renderMentalMathExplanation(q, onNext) {
+    const cardArea = document.getElementById('mentalMathCardArea');
+    if (!cardArea) {
+      if (onNext) onNext();
+      return;
+    }
+
+    const sol = generateStepByStepMentalSolution(q);
+    const stepsHTML = sol.steps.map(s => `<li class="mental-math-step">${s}</li>`).join('');
+
+    cardArea.innerHTML = `
+      <div class="mental-math-card">
+        <div class="mental-math-badge">💡 Mental Math Method</div>
+        <div class="mental-math-strategy">${sol.strategy}</div>
+        <ul class="mental-math-steps">
+          ${stepsHTML}
+        </ul>
+        <div class="mental-math-tip">⭐ Pro Tip: ${sol.tip}</div>
+        <button class="btn btn-primary btn-full btn-sm" id="btnNextMentalQ" style="margin-top: var(--space-sm);">
+          Next Question ›
+        </button>
+      </div>
+    `;
+
+    // Disable numpad during explanation to prevent accidental inputs
+    document.querySelectorAll('.numpad-key').forEach(k => { k.disabled = true; k.style.opacity = '0.5'; });
+
+    const btnNext = document.getElementById('btnNextMentalQ');
+    if (btnNext) {
+      btnNext.addEventListener('click', () => {
+        if (onNext) onNext();
+      });
     }
   }
 
@@ -928,6 +1181,10 @@ export class App {
       const pointsEarned = gs.correctCount * PRACTICE_POINTS_PER_CORRECT;
       state.addPracticePoints(gs.level, gs.practiceOp, pointsEarned);
       
+      // Award coins for practice set completion
+      const practiceCoins = state.calculatePracticeCoins(gs.level, gs.correctCount);
+      state.addCoins(practiceCoins);
+
       state.update({
         totalGamesPlayed: state.get('totalGamesPlayed') + 1,
         totalCorrect: state.get('totalCorrect') + gs.correctCount,
@@ -935,12 +1192,22 @@ export class App {
       });
 
       this.handlePostGameUpdates();
-      this.showResults(gs, 0, 0, null, pointsEarned);
+      this.showResults(gs, practiceCoins, 0, null, pointsEarned);
       return;
     }
 
     // --- NORMAL QUIZ LOGIC ---
     let totalCoins = gs.setCoins;
+    // Double or Nothing powerup: 2x payout if perfect 10/10, otherwise 0
+    if (gs.doubleOrNothingActive) {
+      if (gs.correctCount === 10) {
+        totalCoins *= 2;
+        this.showToast('🎲 Double or Nothing Won! 2× Payout!', 'gold');
+      } else {
+        totalCoins = 0;
+        this.showToast('🎲 Double or Nothing: Did not achieve 10/10.', 'error');
+      }
+    }
     state.addCoins(totalCoins);
 
     if (gs.difficulty === 'goat') {
@@ -985,10 +1252,20 @@ export class App {
     // Streak logic
     const streakIncreased = state.incrementStreak();
     if (streakIncreased) {
-      if (state.get('streakCount') > 1) {
+      const s = state.get('streakCount');
+      if (s > 1) {
         setTimeout(() => {
-           this.triggerStreakCelebration(state.get('streakCount'));
+           this.triggerStreakCelebration(s);
         }, 800);
+      }
+      // Check 50-day milestone bonus
+      const milestone = state.getMilestoneBonus(s);
+      if (milestone) {
+        setTimeout(() => {
+          this.showToast(`🎉 ${milestone.label}! +${milestone.coins}🪙 +${milestone.plectrums}🎸`, 'gold');
+          this.spawnSparkles(35);
+          if (state.get('soundEffects')) SFX.lucky13();
+        }, 2200);
       }
     }
 
@@ -1008,10 +1285,12 @@ export class App {
     if (state.get('soundEffects')) SFX.lucky13(); // Reusing a hype sound
     const overlay = document.createElement('div');
     overlay.className = 'streak-celebration-overlay active';
+    const habitBonusText = streakCount >= 21 ? '<div style="color: #ff8c00; font-size: 16px; margin-top: 8px;">🔥 5× Habit Multiplier Power Active!</div>' : '';
     overlay.innerHTML = `
       <div class="streak-anim-content">
         <div style="font-size: 80px;">🔥</div>
         <div class="streak-anim-text">${streakCount} DAY STREAK!</div>
+        ${habitBonusText}
       </div>
     `;
     document.getElementById('app').appendChild(overlay);
@@ -1043,15 +1322,16 @@ export class App {
           <div class="results-container">
             <div style="font-size: var(--fs-5xl);">${gradeEmoji}</div>
             <div style="font-family: var(--font-display); font-size: var(--fs-2xl); font-weight: 900;">
-              Practice Complete!
+              Practice Drill Complete!
             </div>
             
-            <div class="results-coins" style="color: var(--success); font-size: var(--fs-xl);">
-              <span>${skill.emoji}</span>
-              <span>+${pointsEarned} Points</span>
+            <div class="coin-win-anim" style="margin: var(--space-md) 0;">
+              🪙 +${totalCoins}
             </div>
-            <div style="font-size: var(--fs-sm); color: var(--text-secondary); margin-bottom: var(--space-md);">
-              ${gs.correctCount} of 10 Correct
+
+            <div class="results-coins" style="color: var(--success); font-size: var(--fs-lg); margin-bottom: var(--space-md);">
+              <span>${skill.emoji}</span>
+              <span>+${pointsEarned} Practice Points</span>
             </div>
             
             <div style="display: flex; gap: var(--space-md); width: 100%; max-width: 300px; margin-top: var(--space-lg);">
@@ -1062,6 +1342,7 @@ export class App {
         </div>
       `;
       this.navigateTo('results');
+      this.spawnSparkles(15);
       document.getElementById('resultsHome').addEventListener('click', () => this.exitGame());
       document.getElementById('resultsRetry').addEventListener('click', () => {
         this.startPractice(gs.level, gs.practiceOp);
@@ -1147,6 +1428,7 @@ export class App {
       document.removeEventListener('keydown', this._keyHandler);
     }
     this.gameState = null;
+    this.sessionMentalMath = undefined;
     
     // Re-render path and profile with updated data
     document.getElementById('screen-path').innerHTML = this.renderPathScreen();
@@ -1240,6 +1522,8 @@ export class App {
       currentTheme: state.get('currentTheme'),
       unlockedSounds: state.get('unlockedSounds'),
       enterSound: state.get('enterSound'),
+      unlockedAvatars: state.get('unlockedAvatars') || [],
+      currentAvatar: state.get('currentAvatar'),
       holographicName: state.get('holographicName'),
       vipStatus: state.get('vipStatus'),
       goldenAura: state.get('goldenAura'),
@@ -1349,6 +1633,17 @@ export class App {
       // Equip sound
       state.set('enterSound', item.soundId);
       this.showToast(`${item.emoji} ${item.name} sound equipped!`, 'success');
+      if (state.get('soundEffects')) SFX.shopBuy();
+      this.refreshShop();
+      return;
+    }
+
+    if (status === 'owned' && item.avatarKey) {
+      // Equip avatar
+      state.set('currentAvatar', item.avatarKey);
+      const ap = state.getActiveProfile();
+      if (ap) state.renameProfile(ap.id, null, item.avatarKey);
+      this.showToast(`${item.emoji} ${item.name} avatar equipped!`, 'success');
       if (state.get('soundEffects')) SFX.shopBuy();
       this.refreshShop();
       return;
@@ -1513,14 +1808,22 @@ export class App {
     // Settings
     const hapticsOn = state.get('haptics');
     const soundOn = state.get('soundEffects');
+    const mentalMathOn = state.get('showMentalMath');
+    const hasHabit = state.hasHabitPower();
 
     return `
       ${this.renderHeaderBar('Profile', 'profileCoinDisplay')}
       <div class="screen-content">
         <div class="profile-header-card ${state.get('goldenAura') ? 'golden-aura' : ''}">
-          <div class="profile-avatar">${statusEmoji}</div>
+          <div class="profile-avatar" id="editAvatarBtn" style="position: relative; cursor: pointer;" title="Change Avatar">
+            ${statusEmoji}
+            <div class="avatar-edit-trigger">✏️</div>
+          </div>
           <div class="profile-name ${isHolo ? 'holographic' : ''}">${name}</div>
-          <div class="profile-status-title">${statusTitle}</div>
+          <div class="profile-status-title">
+            ${statusTitle}
+            ${hasHabit ? '<br><span class="habit-power-badge" style="margin-top: 6px;">🔥 5× Habit Power Active</span>' : ''}
+          </div>
         </div>
 
         <div class="daily-challenge-card mb-lg">
@@ -1566,7 +1869,10 @@ export class App {
         </div>
         
         <div class="streak-card">
-          <div class="streak-title">🔥 Daily Streak: ${streakCount} days</div>
+          <div class="streak-title">
+            🔥 Daily Streak: ${streakCount} days
+            ${hasHabit ? '<span class="habit-power-badge" style="float: right;">5× Habit Power</span>' : ''}
+          </div>
           <div class="streak-days">${streakDaysHTML}</div>
           <div class="streak-reward">
             Today's reward: 🪙 ${this.formatNumber(streakReward)} 
@@ -1596,6 +1902,13 @@ export class App {
           <div class="settings-row">
             <div class="settings-row-label">Haptic Feedback</div>
             <button class="toggle ${hapticsOn ? 'active' : ''}" id="toggleHaptics">
+              <div class="toggle-knob"></div>
+            </button>
+          </div>
+
+          <div class="settings-row">
+            <div class="settings-row-label">Practice Mental Math Walkthrough</div>
+            <button class="toggle ${mentalMathOn ? 'active' : ''}" id="toggleMentalMath">
               <div class="toggle-knob"></div>
             </button>
           </div>
@@ -1706,6 +2019,23 @@ export class App {
       });
     }
 
+    const toggleMentalMath = document.getElementById('toggleMentalMath');
+    if (toggleMentalMath) {
+      toggleMentalMath.addEventListener('click', () => {
+        const current = state.get('showMentalMath');
+        state.set('showMentalMath', !current);
+        toggleMentalMath.classList.toggle('active');
+        this.showToast(`Mental Math walkthroughs ${!current ? 'Enabled' : 'Disabled'}`);
+      });
+    }
+
+    const editAvatarBtn = document.getElementById('editAvatarBtn');
+    if (editAvatarBtn) {
+      editAvatarBtn.addEventListener('click', () => {
+        this.showAvatarPickerModal();
+      });
+    }
+
     const resetBtn = document.getElementById('resetProgress');
     if (resetBtn) {
       resetBtn.addEventListener('click', () => {
@@ -1720,19 +2050,59 @@ export class App {
     const exportBtn = document.getElementById('exportProgress');
     if (exportBtn) {
       exportBtn.addEventListener('click', () => {
-        const payload = state.exportAll();
-        const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(payload, null, 2));
-        const dlAnchorElem = document.createElement('a');
-        dlAnchorElem.setAttribute("href", dataStr);
-        dlAnchorElem.setAttribute("download", `mathx_save_${new Date().getTime()}.json`);
-        dlAnchorElem.click();
+        try {
+          const payload = state.exportAll();
+          const jsonStr = JSON.stringify(payload, null, 2);
+          const blob = new Blob([jsonStr], { type: 'application/json' });
+          const url = URL.createObjectURL(blob);
+          const dlAnchorElem = document.createElement('a');
+          dlAnchorElem.setAttribute("href", url);
+          dlAnchorElem.setAttribute("download", `mathx_save_${new Date().getTime()}.json`);
+          document.body.appendChild(dlAnchorElem);
+          dlAnchorElem.click();
+          dlAnchorElem.remove();
+          setTimeout(() => URL.revokeObjectURL(url), 1000);
+          this.showToast('Backup file downloaded! 📥', 'success');
+        } catch (e) {
+          // Clipboard fallback if file saving fails on restricted platforms
+          const payload = state.exportAll();
+          const jsonStr = JSON.stringify(payload, null, 2);
+          navigator.clipboard?.writeText(jsonStr).then(() => {
+            this.showToast('Save copied to clipboard! 📋', 'success');
+          }).catch(() => {
+            prompt('Copy your save data below:', jsonStr);
+          });
+        }
       });
     }
 
     const importBtn = document.getElementById('importProgress');
     const importFile = document.getElementById('importFile');
     if (importBtn && importFile) {
-      importBtn.addEventListener('click', () => importFile.click());
+      importBtn.addEventListener('click', () => {
+        // Choice: file picker or paste JSON
+        const choice = confirm('Press OK to choose a backup file from your device, or CANCEL to paste JSON text.');
+        if (choice) {
+          importFile.click();
+        } else {
+          const pasted = prompt('Paste your backup JSON text here:');
+          if (pasted && pasted.trim()) {
+            try {
+              const data = JSON.parse(pasted.trim());
+              const ok = state.importAll(data);
+              if (ok) {
+                this.showToast('Save data restored successfully! 🎉', 'success');
+                setTimeout(() => this.render(), 500);
+              } else {
+                this.showToast('Save format not recognized.', 'error');
+              }
+            } catch (err) {
+              this.showToast('Invalid JSON save text.', 'error');
+            }
+          }
+        }
+      });
+
       importFile.addEventListener('change', (e) => {
         const file = e.target.files[0];
         if (!file) return;
@@ -1742,7 +2112,7 @@ export class App {
             const data = JSON.parse(ev.target.result);
             const ok = state.importAll(data);
             if (ok) {
-              this.showToast('Save file loaded successfully!', 'success');
+              this.showToast('Save file loaded successfully! 🎉', 'success');
               setTimeout(() => this.render(), 500);
             } else {
               this.showToast('Save file format not recognized.', 'error');
@@ -1768,6 +2138,64 @@ export class App {
         document.getElementById('screen-profile').innerHTML = this.renderProfileScreen();
         this.bindProfileEvents();
       }
+    });
+  }
+
+  showAvatarPickerModal() {
+    let modal = document.getElementById('avatarPickerModal');
+    if (!modal) {
+      modal = document.createElement('div');
+      modal.id = 'avatarPickerModal';
+      modal.className = 'avatar-modal';
+      document.body.appendChild(modal);
+    }
+
+    const unlocked = state.get('unlockedAvatars') || ['🦸','🦄','🐉','🥷','👽','😺','🐼','🦊','🐙','🧙','👨‍🚀','🤖'];
+    const current = state.get('currentAvatar') || '🦸';
+
+    // Ensure user has at least default starter avatars in unlocked if empty
+    const uniqueUnlocked = [...new Set([...['🦸','🦄','🐉','🥷','👽','😺','🐼','🦊','🐙','🧙','👨‍🚀','🤖'], ...unlocked])];
+
+    const gridHTML = uniqueUnlocked.map(av => `
+      <button class="avatar-grid-item ${av === current ? 'active' : ''}" data-avatar="${av}">
+        <span class="avatar-grid-emoji">${av}</span>
+        ${av === current ? '<span style="font-size: 10px; color: var(--accent-primary); font-weight: bold; margin-top: 2px;">Equipped</span>' : ''}
+      </button>
+    `).join('');
+
+    modal.innerHTML = `
+      <div class="purchase-modal-bg" id="avatarModalBg"></div>
+      <div class="avatar-picker-card">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-md);">
+          <div style="font-family: var(--font-display); font-weight: 800; font-size: var(--fs-xl);">Choose Your Avatar</div>
+          <button class="game-close-btn" id="avatarModalClose" style="position: static;">✕</button>
+        </div>
+        <div class="avatar-grid">
+          ${gridHTML}
+        </div>
+        <button class="btn btn-secondary btn-full" id="avatarModalDone">Done</button>
+      </div>
+    `;
+
+    modal.classList.add('show');
+
+    const closeModal = () => modal.classList.remove('show');
+    document.getElementById('avatarModalBg').onclick = closeModal;
+    document.getElementById('avatarModalClose').onclick = closeModal;
+    document.getElementById('avatarModalDone').onclick = closeModal;
+
+    modal.querySelectorAll('.avatar-grid-item').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const av = btn.dataset.avatar;
+        state.set('currentAvatar', av);
+        const ap = state.getActiveProfile();
+        if (ap) state.renameProfile(ap.id, null, av);
+        this.showToast(`${av} Avatar equipped!`, 'success');
+        closeModal();
+        document.getElementById('screen-profile').innerHTML = this.renderProfileScreen();
+        this.bindProfileEvents();
+        this.bindProfileBubble();
+      });
     });
   }
 

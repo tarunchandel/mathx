@@ -589,9 +589,247 @@
 [data-theme="vaporwave-light"] .tab-bar,
 [data-theme="citrus-light"] .tab-bar,
 [data-theme="neonPulseLight"] .tab-bar,
-[data-theme="venomLight"] .tab-bar {
-  background: rgba(255, 255, 255, 0.88);
+[data-theme="venomLight"] .tab-bar,
+[data-theme="retroBwLight"] .tab-bar,
+[data-theme="retroGameBoyLight"] .tab-bar,
+[data-theme="retroAmberLight"] .tab-bar,
+[data-theme="retroGreenLight"] .tab-bar,
+[data-theme="retroMiamiLight"] .tab-bar,
+[data-theme="retroBlueprintLight"] .tab-bar {
+  background: rgba(255, 255, 255, 0.92);
   border-top: var(--border-subtle);
+}
+
+/* ============================================
+   RETRO COLLECTION — 12 Themes (Monochrome & Vintage)
+   ============================================ */
+
+/* 1. Retro Black & White Dark */
+[data-theme="retroBwDark"] {
+  --bg-primary: #000000;
+  --bg-secondary: #0d0d0d;
+  --bg-tertiary: #171717;
+  --bg-card: rgba(18, 18, 18, 0.92);
+  --bg-card-hover: rgba(28, 28, 28, 0.96);
+  --surface-glass: rgba(255, 255, 255, 0.06);
+  --surface-glass-hover: rgba(255, 255, 255, 0.12);
+  --text-primary: #ffffff;
+  --text-secondary: rgba(255, 255, 255, 0.75);
+  --text-tertiary: rgba(255, 255, 255, 0.45);
+  --text-accent: #ffffff;
+  --accent-primary: #ffffff;
+  --accent-primary-glow: rgba(255, 255, 255, 0.35);
+  --accent-secondary: #aaaaaa;
+  --accent-secondary-glow: rgba(170, 170, 170, 0.25);
+  --gradient-primary: linear-gradient(135deg, #ffffff 0%, #888888 100%);
+  --gradient-bg: linear-gradient(180deg, #000000 0%, #0d0d0d 50%, #171717 100%);
+  --border-subtle: 1px solid rgba(255, 255, 255, 0.22);
+}
+[data-theme="retroBwDark"] body::before {
+  content: ''; position: fixed; inset: 0; pointer-events: none; z-index: -1;
+  background: linear-gradient(0deg, transparent 96%, rgba(255, 255, 255, 0.08) 100%);
+  background-size: 100% 3px;
+}
+
+/* 2. Retro Black & White Light */
+[data-theme="retroBwLight"] {
+  --bg-primary: #ffffff;
+  --bg-secondary: #f4f4f4;
+  --bg-tertiary: #e8e8e8;
+  --bg-card: rgba(255, 255, 255, 0.95);
+  --bg-card-hover: #ffffff;
+  --surface-glass: rgba(0, 0, 0, 0.04);
+  --surface-glass-hover: rgba(0, 0, 0, 0.08);
+  --text-primary: #111111;
+  --text-secondary: rgba(17, 17, 17, 0.75);
+  --text-tertiary: rgba(17, 17, 17, 0.45);
+  --text-accent: #000000;
+  --accent-primary: #000000;
+  --accent-primary-glow: rgba(0, 0, 0, 0.25);
+  --accent-secondary: #444444;
+  --accent-secondary-glow: rgba(68, 68, 68, 0.2);
+  --gradient-primary: linear-gradient(135deg, #000000 0%, #555555 100%);
+  --gradient-bg: linear-gradient(180deg, #ffffff 0%, #f4f4f4 50%, #e8e8e8 100%);
+  --border-subtle: 1px solid rgba(0, 0, 0, 0.2);
+}
+
+/* 3. CRT Amber Dark */
+[data-theme="retroAmberDark"] {
+  --bg-primary: #0c0700;
+  --bg-secondary: #180e00;
+  --bg-tertiary: #241600;
+  --bg-card: rgba(28, 17, 0, 0.88);
+  --text-primary: #ffb000;
+  --text-secondary: rgba(255, 176, 0, 0.75);
+  --text-tertiary: rgba(255, 176, 0, 0.45);
+  --accent-primary: #ffb000;
+  --accent-primary-glow: rgba(255, 176, 0, 0.45);
+  --accent-secondary: #ff8000;
+  --gradient-primary: linear-gradient(135deg, #ffb000 0%, #ff7700 100%);
+  --gradient-bg: linear-gradient(180deg, #0c0700 0%, #180e00 50%, #241600 100%);
+  --border-subtle: 1px solid rgba(255, 176, 0, 0.25);
+}
+[data-theme="retroAmberDark"] body::before {
+  content: ''; position: fixed; inset: 0; pointer-events: none; z-index: -1;
+  background: radial-gradient(circle, rgba(255, 176, 0, 0.08) 0%, transparent 80%);
+}
+
+/* 4. Phosphor Green Dark */
+[data-theme="retroGreenDark"] {
+  --bg-primary: #000b04;
+  --bg-secondary: #001708;
+  --bg-tertiary: #00240d;
+  --bg-card: rgba(0, 26, 9, 0.9);
+  --text-primary: #33ff66;
+  --text-secondary: rgba(51, 255, 102, 0.75);
+  --text-tertiary: rgba(51, 255, 102, 0.45);
+  --accent-primary: #33ff66;
+  --accent-primary-glow: rgba(51, 255, 102, 0.4);
+  --accent-secondary: #00cc44;
+  --gradient-primary: linear-gradient(135deg, #33ff66 0%, #00aa33 100%);
+  --gradient-bg: linear-gradient(180deg, #000b04 0%, #001708 50%, #00240d 100%);
+  --border-subtle: 1px solid rgba(51, 255, 102, 0.25);
+}
+[data-theme="retroGreenDark"] body::before {
+  content: ''; position: fixed; inset: 0; pointer-events: none; z-index: -1;
+  background: linear-gradient(0deg, transparent 95%, rgba(51, 255, 102, 0.06) 100%);
+  background-size: 100% 4px;
+}
+
+/* 5. Arcade 1984 Dark */
+[data-theme="retroArcadeDark"] {
+  --bg-primary: #050518;
+  --bg-secondary: #0b0b2b;
+  --bg-tertiary: #13133d;
+  --bg-card: rgba(16, 16, 52, 0.85);
+  --text-primary: #ffe600;
+  --text-secondary: #00ffff;
+  --text-tertiary: rgba(255, 230, 0, 0.4);
+  --accent-primary: #ffe600;
+  --accent-primary-glow: rgba(255, 230, 0, 0.45);
+  --accent-secondary: #00e5ff;
+  --gradient-primary: linear-gradient(135deg, #ffe600 0%, #00e5ff 100%);
+  --gradient-bg: linear-gradient(180deg, #050518 0%, #0b0b2b 50%, #13133d 100%);
+  --border-subtle: 1px solid rgba(255, 230, 0, 0.25);
+}
+
+/* 6. Synthwave Dark */
+[data-theme="retroSynthDark"] {
+  --bg-primary: #120324;
+  --bg-secondary: #1d0738;
+  --bg-tertiary: #2a0b4f;
+  --bg-card: rgba(36, 10, 68, 0.85);
+  --text-primary: #ff71ce;
+  --text-secondary: #01cdfe;
+  --text-tertiary: rgba(255, 113, 206, 0.45);
+  --accent-primary: #ff71ce;
+  --accent-primary-glow: rgba(255, 113, 206, 0.45);
+  --accent-secondary: #05ffa1;
+  --gradient-primary: linear-gradient(135deg, #ff71ce 0%, #01cdfe 100%);
+  --gradient-bg: linear-gradient(180deg, #120324 0%, #1d0738 50%, #2a0b4f 100%);
+  --border-subtle: 1px solid rgba(255, 113, 206, 0.28);
+}
+
+/* 7. Cassette Tape Dark */
+[data-theme="retroCassetteDark"] {
+  --bg-primary: #141416;
+  --bg-secondary: #1d1e22;
+  --bg-tertiary: #27282e;
+  --bg-card: rgba(30, 31, 36, 0.9);
+  --text-primary: #f5eedc;
+  --text-secondary: rgba(245, 238, 220, 0.72);
+  --text-tertiary: rgba(245, 238, 220, 0.4);
+  --accent-primary: #ff5e36;
+  --accent-primary-glow: rgba(255, 94, 54, 0.4);
+  --accent-secondary: #f4b41a;
+  --gradient-primary: linear-gradient(135deg, #ff5e36 0%, #f4b41a 100%);
+  --gradient-bg: linear-gradient(180deg, #141416 0%, #1d1e22 50%, #27282e 100%);
+  --border-subtle: 1px solid rgba(255, 94, 54, 0.25);
+}
+
+/* 8. Game Boy Light */
+[data-theme="retroGameBoyLight"] {
+  --bg-primary: #8bac0f;
+  --bg-secondary: #7f9f0d;
+  --bg-tertiary: #718f0a;
+  --bg-card: rgba(155, 188, 15, 0.92);
+  --text-primary: #0f380f;
+  --text-secondary: #306230;
+  --text-tertiary: rgba(48, 98, 48, 0.6);
+  --accent-primary: #0f380f;
+  --accent-primary-glow: rgba(15, 56, 15, 0.3);
+  --accent-secondary: #306230;
+  --gradient-primary: linear-gradient(135deg, #306230 0%, #0f380f 100%);
+  --gradient-bg: linear-gradient(180deg, #9bbc0f 0%, #8bac0f 50%, #7f9f0d 100%);
+  --border-subtle: 1px solid rgba(15, 56, 15, 0.3);
+}
+
+/* 9. Newsprint Light */
+[data-theme="retroAmberLight"] {
+  --bg-primary: #faf2dc;
+  --bg-secondary: #f0e6c8;
+  --bg-tertiary: #e4d8b2;
+  --bg-card: rgba(255, 250, 238, 0.92);
+  --text-primary: #3c2f1f;
+  --text-secondary: rgba(60, 47, 31, 0.75);
+  --text-tertiary: rgba(60, 47, 31, 0.45);
+  --accent-primary: #8b5a2b;
+  --accent-primary-glow: rgba(139, 90, 43, 0.3);
+  --accent-secondary: #a0522d;
+  --gradient-primary: linear-gradient(135deg, #8b5a2b 0%, #b8860b 100%);
+  --gradient-bg: linear-gradient(180deg, #faf2dc 0%, #f0e6c8 50%, #e4d8b2 100%);
+  --border-subtle: 1px solid rgba(139, 90, 43, 0.22);
+}
+
+/* 10. Chalkboard Light */
+[data-theme="retroGreenLight"] {
+  --bg-primary: #e8ede4;
+  --bg-secondary: #d9e2d3;
+  --bg-tertiary: #c8d4bf;
+  --bg-card: rgba(255, 255, 255, 0.9);
+  --text-primary: #1e3321;
+  --text-secondary: rgba(30, 51, 33, 0.72);
+  --text-tertiary: rgba(30, 51, 33, 0.45);
+  --accent-primary: #2d5a27;
+  --accent-primary-glow: rgba(45, 90, 39, 0.28);
+  --accent-secondary: #477638;
+  --gradient-primary: linear-gradient(135deg, #2d5a27 0%, #477638 100%);
+  --gradient-bg: linear-gradient(180deg, #e8ede4 0%, #d9e2d3 50%, #c8d4bf 100%);
+  --border-subtle: 1px solid rgba(45, 90, 39, 0.22);
+}
+
+/* 11. Miami 80s Light */
+[data-theme="retroMiamiLight"] {
+  --bg-primary: #fff5f8;
+  --bg-secondary: #ffe6ee;
+  --bg-tertiary: #ffd2e0;
+  --bg-card: rgba(255, 255, 255, 0.92);
+  --text-primary: #2a1124;
+  --text-secondary: rgba(42, 17, 36, 0.72);
+  --text-tertiary: rgba(42, 17, 36, 0.42);
+  --accent-primary: #ff4081;
+  --accent-primary-glow: rgba(255, 64, 129, 0.35);
+  --accent-secondary: #00bcd4;
+  --gradient-primary: linear-gradient(135deg, #ff4081 0%, #00bcd4 100%);
+  --gradient-bg: linear-gradient(180deg, #fff5f8 0%, #ffe6ee 50%, #ffd2e0 100%);
+  --border-subtle: 1px solid rgba(255, 64, 129, 0.2);
+}
+
+/* 12. Blueprint Light */
+[data-theme="retroBlueprintLight"] {
+  --bg-primary: #e6f0fa;
+  --bg-secondary: #d2e4f7;
+  --bg-tertiary: #b9d6f3;
+  --bg-card: rgba(255, 255, 255, 0.94);
+  --text-primary: #072a53;
+  --text-secondary: rgba(7, 42, 83, 0.72);
+  --text-tertiary: rgba(7, 42, 83, 0.42);
+  --accent-primary: #0266c8;
+  --accent-primary-glow: rgba(2, 102, 200, 0.32);
+  --accent-secondary: #0093d8;
+  --gradient-primary: linear-gradient(135deg, #0266c8 0%, #0093d8 100%);
+  --gradient-bg: linear-gradient(180deg, #e6f0fa 0%, #d2e4f7 50%, #b9d6f3 100%);
+  --border-subtle: 1px solid rgba(2, 102, 200, 0.22);
 }
 
 @keyframes floatUp { from { background-position: 0 0; } to { background-position: 0 100vh; } }
@@ -2877,3 +3115,286 @@ body {
 .profile-popover-name { flex: 1; font-weight: 600; }
 .profile-popover-tick { color: var(--success); font-weight: 800; }
 .profile-popover-actions { display: flex; gap: var(--space-sm); }
+
+/* ===== Mental Math Walkthrough Card & Toggle ===== */
+.mental-math-card {
+  position: relative;
+  background: var(--bg-card);
+  border: 1px solid var(--accent-primary);
+  border-radius: var(--radius-lg);
+  padding: var(--space-md);
+  margin-top: var(--space-sm);
+  margin-bottom: var(--space-sm);
+  box-shadow: var(--shadow-md);
+  animation: slideDown 0.3s ease-out;
+  text-align: left;
+}
+.mental-math-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: var(--accent-primary);
+  color: var(--bg-primary);
+  font-size: var(--fs-xs);
+  font-weight: 800;
+  padding: 2px 8px;
+  border-radius: var(--radius-sm);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: var(--space-xs);
+}
+.mental-math-strategy {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: var(--fs-base);
+  color: var(--text-primary);
+  margin-bottom: var(--space-xs);
+}
+.mental-math-steps {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 var(--space-xs) 0;
+}
+.mental-math-step {
+  font-family: var(--font-mono);
+  font-size: var(--fs-sm);
+  color: var(--text-secondary);
+  padding: 3px 0;
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+.mental-math-step::before {
+  content: '▸';
+  color: var(--accent-primary);
+  font-size: var(--fs-md);
+}
+.mental-math-tip {
+  font-size: var(--fs-xs);
+  color: var(--text-tertiary);
+  font-style: italic;
+  border-top: 1px dashed var(--border-subtle);
+  padding-top: var(--space-xs);
+  margin-top: var(--space-xs);
+}
+.mental-math-toggle-btn {
+  background: var(--surface-glass);
+  border: var(--border-subtle);
+  color: var(--text-primary);
+  border-radius: var(--radius-full);
+  padding: 4px 12px;
+  font-size: var(--fs-xs);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: all var(--transition-fast);
+}
+.mental-math-toggle-btn.active {
+  background: var(--accent-primary);
+  color: var(--bg-primary);
+  border-color: var(--accent-primary);
+}
+
+/* ===== Pre-Practice Concept Lesson Modal ===== */
+.lesson-modal {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-modal);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-base);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--transition-base);
+}
+.lesson-modal.show {
+  opacity: 1;
+  pointer-events: auto;
+}
+.lesson-card {
+  position: relative;
+  background: var(--bg-secondary);
+  border: var(--border-subtle);
+  border-radius: var(--radius-xl);
+  padding: var(--space-lg);
+  max-width: 420px;
+  width: 100%;
+  box-shadow: var(--shadow-lg);
+  transform: scale(0.95);
+  transition: transform var(--transition-spring);
+}
+.lesson-modal.show .lesson-card {
+  transform: scale(1);
+}
+.lesson-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  margin-bottom: var(--space-md);
+}
+.lesson-icon {
+  font-size: var(--fs-3xl);
+}
+.lesson-title-area {
+  flex: 1;
+}
+.lesson-tag {
+  font-size: var(--fs-xs);
+  text-transform: uppercase;
+  color: var(--accent-primary);
+  font-weight: 800;
+  letter-spacing: 0.5px;
+}
+.lesson-title {
+  font-family: var(--font-display);
+  font-size: var(--fs-lg);
+  font-weight: 800;
+  color: var(--text-primary);
+}
+.lesson-body {
+  background: var(--surface-glass);
+  border-radius: var(--radius-md);
+  padding: var(--space-md);
+  margin-bottom: var(--space-lg);
+}
+.lesson-rule {
+  font-weight: 600;
+  font-size: var(--fs-sm);
+  color: var(--text-primary);
+  margin-bottom: var(--space-sm);
+}
+.lesson-example {
+  font-family: var(--font-mono);
+  background: rgba(0,0,0,0.25);
+  border-radius: var(--radius-sm);
+  padding: var(--space-sm);
+  color: var(--accent-secondary);
+  font-size: var(--fs-sm);
+  margin-bottom: var(--space-xs);
+}
+.lesson-tip {
+  font-size: var(--fs-xs);
+  color: var(--text-tertiary);
+  font-style: italic;
+}
+
+/* ===== Avatar Picker Modal in Profile ===== */
+.avatar-modal {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-modal);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-base);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--transition-base);
+}
+.avatar-modal.show {
+  opacity: 1;
+  pointer-events: auto;
+}
+.avatar-picker-card {
+  position: relative;
+  background: var(--bg-secondary);
+  border: var(--border-subtle);
+  border-radius: var(--radius-xl);
+  padding: var(--space-lg);
+  max-width: 440px;
+  width: 100%;
+  max-height: 85vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: var(--shadow-lg);
+}
+.avatar-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--space-sm);
+  overflow-y: auto;
+  padding: var(--space-xs);
+  margin-bottom: var(--space-md);
+}
+.avatar-grid-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-sm);
+  background: var(--surface-glass);
+  border: 2px solid transparent;
+  border-radius: var(--radius-lg);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+.avatar-grid-item:hover {
+  background: var(--surface-glass-hover);
+  border-color: var(--accent-primary);
+}
+.avatar-grid-item.active {
+  border-color: var(--accent-primary);
+  background: var(--surface-glass-hover);
+  box-shadow: 0 0 12px var(--accent-primary-glow);
+}
+.avatar-grid-emoji {
+  font-size: 32px;
+  line-height: 1;
+}
+.avatar-edit-trigger {
+  position: absolute;
+  bottom: -4px;
+  right: -4px;
+  background: var(--accent-primary);
+  color: var(--bg-primary);
+  width: 26px;
+  height: 26px;
+  border-radius: var(--radius-full);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  border: 2px solid var(--bg-card);
+  cursor: pointer;
+  box-shadow: var(--shadow-sm);
+}
+
+/* ===== Habit Power Buff Badge ===== */
+.habit-power-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: linear-gradient(135deg, #ff4500 0%, #ff8c00 100%);
+  color: #ffffff;
+  font-family: var(--font-display);
+  font-size: var(--fs-xs);
+  font-weight: 800;
+  padding: 4px 10px;
+  border-radius: var(--radius-full);
+  box-shadow: 0 0 12px rgba(255, 69, 0, 0.5);
+  animation: pulseBg 2s infinite alternate;
+}
+
+/* ===== Results Coin Animation ===== */
+.coin-win-anim {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: var(--fs-3xl);
+  font-family: var(--font-mono);
+  font-weight: 900;
+  color: var(--accent-gold);
+  text-shadow: 0 0 16px rgba(245, 158, 11, 0.4);
+  animation: bounceScale 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+@keyframes bounceScale {
+  0% { transform: scale(0.3); opacity: 0; }
+  60% { transform: scale(1.2); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
+}
+@keyframes slideDown {
+  from { opacity: 0; transform: translateY(-8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
