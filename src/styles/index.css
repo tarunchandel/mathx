@@ -1718,8 +1718,10 @@ body {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: var(--space-xl);
-  gap: var(--space-lg);
+  padding: var(--space-md);
+  gap: var(--space-sm);
+  overflow-y: auto;
+  max-height: 100%;
 }
 
 .question-number {
@@ -3129,6 +3131,12 @@ body {
   animation: slideDown 0.3s ease-out;
   text-align: left;
 }
+.mental-math-card.is-correct {
+  border-color: var(--success);
+}
+.mental-math-card.is-wrong {
+  border-color: var(--error);
+}
 .mental-math-badge {
   display: inline-flex;
   align-items: center;
@@ -3142,6 +3150,22 @@ body {
   text-transform: uppercase;
   letter-spacing: 0.5px;
   margin-bottom: var(--space-xs);
+}
+.mental-math-badge.success {
+  background: var(--success);
+  color: #ffffff;
+}
+.mental-math-badge.wrong {
+  background: var(--error);
+  color: #ffffff;
+}
+.fifty-option {
+  min-width: 52px;
+  padding: 4px 12px;
+  font-family: var(--font-mono);
+  font-size: var(--fs-sm);
+  font-weight: 800;
+  cursor: pointer;
 }
 .mental-math-strategy {
   font-family: var(--font-display);

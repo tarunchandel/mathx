@@ -214,7 +214,12 @@ const SHOP_CATEGORIES = {
  */
 function getShopItems(category) {
   const items = SHOP_CATEGORIES[category]?.items ? [...SHOP_CATEGORIES[category].items] : [];
-  return items.sort((a, b) => a.price - b.price);
+  return items.sort((a, b) => {
+    if (a.currency !== b.currency) {
+      return a.currency === 'coins' ? -1 : 1;
+    }
+    return a.price - b.price;
+  });
 }
 
 /**
@@ -258,9 +263,12 @@ function getItemStatus(itemId, state) {
 
   // Avatars
   if (foundItem?.avatarKey) {
+    if (state.currentAvatar === foundItem.avatarKey) {
+      return 'equipped';
+    }
     const owned = state.unlockedAvatars || [];
     if (owned.includes(foundItem.avatarKey)) {
-      return state.currentAvatar === foundItem.avatarKey ? 'equipped' : 'owned';
+      return 'owned';
     }
     return 'available';
   }

@@ -214,6 +214,7 @@ class StateManager {
     const fresh = structuredClone(DEFAULT_STATE);
     fresh.playerName = profile.name;
     fresh.currentAvatar = emoji;
+    fresh.unlockedAvatars = [emoji];
     localStorage.setItem(PROFILE_PREFIX + id, JSON.stringify(fresh));
     this.state = fresh;
     this._notifyAll();
@@ -252,7 +253,11 @@ class StateManager {
     saveMeta(this.meta);
     if (id === this.meta.activeProfileId) {
       if (name) { this.state.playerName = p.name; }
-      if (emoji) { this.state.currentAvatar = emoji; }
+      if (emoji) { 
+        this.state.currentAvatar = emoji;
+        if (!this.state.unlockedAvatars) this.state.unlockedAvatars = [];
+        if (!this.state.unlockedAvatars.includes(emoji)) this.state.unlockedAvatars.push(emoji);
+      }
       this._save();
       this._notify('playerName', this.state.playerName);
       this._notify('currentAvatar', this.state.currentAvatar);
@@ -271,7 +276,14 @@ class StateManager {
     try {
       const raw = localStorage.getItem(this._activeKey());
       if (raw) {
-        return this._deepMerge(structuredClone(DEFAULT_STATE), JSON.parse(raw));
+        const loaded = this._deepMerge(structuredClone(DEFAULT_STATE), JSON.parse(raw));
+        if (loaded.currentAvatar) {
+          if (!Array.isArray(loaded.unlockedAvatars)) loaded.unlockedAvatars = [];
+          if (!loaded.unlockedAvatars.includes(loaded.currentAvatar)) {
+            loaded.unlockedAvatars.push(loaded.currentAvatar);
+          }
+        }
+        return loaded;
       }
     } catch (e) {
       console.warn('Failed to load profile state:', e);
@@ -472,6 +484,11 @@ class StateManager {
     if (diffDays > 1) {
       if (this.state.streakFreezeActive) this.update({ streakFreezeActive: false });
       else this.update({ streakCount: 0, streakRewardCollected: false });
+    } else if (diffDays === 1) {
+      // New consecutive day: ready to collect new streak reward
+      if (this.state.streakRewardCollected) {
+        this.update({ streakRewardCollected: false });
+      }
     }
   }
 
@@ -534,7 +551,7 @@ class StateManager {
   getMilestoneBonus(streak) {
     const s = streak || this.state.streakCount;
     if (s >= 50 && s % 50 === 0) {
-      const mult = s / 50;
+      const mult = Math.floor(s / 50);
       return {
         coins: 10000 * mult,
         plectrums: 20 * mult,
@@ -545,8 +562,21 @@ class StateManager {
   }
 
   getStreakReward() {
-    const streak = this.state.streakCount;
-    let base = Math.min(Math.pow(2, streak), 10000);
+    const streak = Math.max(1, this.state.streakCount || 1);
+    let base = 0;
+    if (streak === 1) base = 100;
+    else if (streak === 2) base = 200;
+    else if (streak <= 5) base = 200 + (streak - 2) * 150; // 3: 350, 4: 500, 5: 650
+    else if (streak <= 7) base = 650 + (streak - 5) * 350; // 6: 1000, 7: 1350
+    else if (streak <= 14) base = 1350 + (streak - 7) * 200; // 14: 2750
+    else if (streak <= 21) base = 2750 + (streak - 14) * 320; // 21: ~5000
+    else base = 5000;
+
+    // After 21 days: 5x habit power on all coin earnings including streak rewards!
+    if (this.hasHabitPower()) {
+      base *= 5;
+    }
+
     // Add extra milestone bonus if today is a 50-day multiple
     const milestone = this.getMilestoneBonus(streak);
     if (milestone) {
@@ -604,6 +634,7 @@ class StateManager {
       if (active) {
         fresh.playerName = active.name;
         fresh.currentAvatar = active.emoji;
+        fresh.unlockedAvatars = [active.emoji];
       }
     }
     this.state = fresh;

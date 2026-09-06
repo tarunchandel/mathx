@@ -10,7 +10,7 @@ import {
   getPrePracticeLesson
 } from './engine.js';
 import { getSmartTip, generateStepByStepMentalSolution } from './tips.js';
-import { SHOP_CATEGORIES, getShopCategories, getItemStatus } from './shop-data.js';
+import { SHOP_CATEGORIES, getShopItems, getShopCategories, getItemStatus } from './shop-data.js';
 import { SFX, Haptics } from './audio.js';
 
 export class App {
@@ -22,6 +22,7 @@ export class App {
   }
 
   init() {
+    this._attachGlobalKeyHandler();
     // First-run gate: if no profile exists, show profile creation flow.
     if (!state.hasProfile()) {
       this.renderProfileGate({ firstRun: true });
@@ -32,6 +33,43 @@ export class App {
     state.checkStreak();
     state.recalculateCurrentLevel();
     this.showSplash();
+  }
+
+  _attachGlobalKeyHandler() {
+    if (this._globalKeyAttached) return;
+    this._globalKeyAttached = true;
+    document.addEventListener('keydown', (e) => {
+      if (this.currentScreen !== 'game') return;
+      const gs = this.gameState;
+      if (!gs) return;
+
+      // When explanation is showing, allow Enter, Space, or ArrowRight to advance
+      if (gs.isShowingExplanation) {
+        if (e.key === 'Enter' || e.key === ' ' || e.key === 'ArrowRight') {
+          e.preventDefault();
+          const nextBtn = document.getElementById('nextPracticeQBtn');
+          if (nextBtn) nextBtn.click();
+        }
+        return;
+      }
+
+      if (e.key >= '0' && e.key <= '9') {
+        e.preventDefault();
+        this.handleKeyPress(e.key);
+      } else if (e.key === '.') {
+        e.preventDefault();
+        this.handleKeyPress('.');
+      } else if (e.key === '-') {
+        e.preventDefault();
+        this.handleKeyPress('-');
+      } else if (e.key === 'Backspace') {
+        e.preventDefault();
+        this.handleKeyPress('backspace');
+      } else if (e.key === 'Enter') {
+        e.preventDefault();
+        this.handleKeyPress('submit');
+      }
+    });
   }
 
   // === PROFILE GATE (Netflix-style) ===
@@ -422,7 +460,7 @@ export class App {
     let quizHTML = '';
     
     ['chill', 'vibe', 'goat'].forEach(diffKey => {
-      const diffConfig = getDifficultyConfig(diffKey);
+      const diffConfig = getDifficultyConfig(diffKey, level);
       const isSubComplete = state.isSubLevelCompleted(level, diffKey);
       
       if (!isUnlocked) {
@@ -666,6 +704,7 @@ export class App {
 
       // Armed powerup flags
       armed: armed,
+      safetyHitsRemaining: (armed.safetyPins ? 1 : 0) + (armed.shieldWall ? 1 : 0) + (armed.rewindTime ? 1 : 0),
       safetyArmed: !!(armed.safetyPins || armed.shieldWall || armed.rewindTime),
       greatEscapeActive: !!armed.greatEscapes,
       luckyCloverActive: !!armed.luckyClover,
@@ -681,6 +720,7 @@ export class App {
       hintMasterActive: !!armed.hintMaster,
       phoneAFriendAvailable: !!armed.phoneAFriend,
       doubleOrNothingActive: !!armed.doubleOrNothing,
+      isShowingExplanation: false,
     };
 
     this.renderGameScreen();
@@ -702,15 +742,23 @@ export class App {
     const q = gs.questions[gs.currentQuestion];
     const diffConfig = gs.diffConfig;
 
-    // Show ARMED powerup chips only (read-only, no click handlers — fix for invisible Enter bug).
+    // Show ARMED powerup chips for all 16 items
     let armedChips = [];
-    if (gs.safetyArmed) armedChips.push('🧷');
+    if (gs.safetyHitsRemaining > 0) armedChips.push(`🧷${gs.safetyHitsRemaining > 1 ? `×${gs.safetyHitsRemaining}` : ''}`);
     if (gs.greatEscapeActive) armedChips.push('🪂');
     if (gs.timeWarpActive) armedChips.push('⏳');
     if (gs.rocketFuelActive) armedChips.push('🚀');
     if (gs.luckyCloverActive) armedChips.push('🍀');
     if (gs.goldRushAvailable) armedChips.push('💰');
     if (gs.cloverChainActive) armedChips.push('☘️');
+    if (gs.fiftyFiftyActive) armedChips.push('🎯');
+    if (gs.crystalBallActive) armedChips.push('🔮');
+    if (gs.hintMasterActive) armedChips.push('💡');
+    if (gs.autoSolveActive && !gs.autoSolveUsed) armedChips.push('🤖');
+    if (gs.phoneAFriendAvailable && !gs.phoneFriendUsed) armedChips.push('📞');
+    if (gs.doubleOrNothingActive) armedChips.push('🎲');
+    if (gs.mirrorMirrorActive) armedChips.push('🪞');
+
     const armedHTML = armedChips.length
       ? `<div class="armed-row">${armedChips.map(e => `<span class="armed-chip">${e}</span>`).join('')}</div>`
       : '';
@@ -735,12 +783,23 @@ export class App {
       `;
     }
 
-    // 50/50 powerup: hint that gives two candidate answers (one correct, one close distractor)
+    // 50/50 powerup: interactive buttons for two candidate answers
     let fiftyFiftyChip = '';
     if (gs.fiftyFiftyActive) {
-      const distractor = q.answer + (Math.random() < 0.5 ? 10 : -5);
-      const candidates = Math.random() < 0.5 ? [q.answer, distractor] : [distractor, q.answer];
-      fiftyFiftyChip = `<div class="crystal-hint" style="background: rgba(245, 158, 11, 0.15); border: 1px solid var(--accent-gold);">🎯 50/50: Answer is either <b>${candidates[0]}</b> or <b>${candidates[1]}</b></div>`;
+      if (!gs.fiftyFiftyCandidates || gs.fiftyFiftyQ !== gs.currentQuestion) {
+        const delta = (Math.random() < 0.5 ? 1 : -1) * (Math.floor(Math.random() * 5) + 1);
+        const distractor = q.answer + delta;
+        gs.fiftyFiftyCandidates = Math.random() < 0.5 ? [q.answer, distractor] : [distractor, q.answer];
+        gs.fiftyFiftyQ = gs.currentQuestion;
+      }
+      const [c1, c2] = gs.fiftyFiftyCandidates;
+      fiftyFiftyChip = `
+        <div class="crystal-hint" style="background: rgba(245, 158, 11, 0.15); border: 1px solid var(--accent-gold); display: flex; align-items: center; justify-content: center; gap: 8px; flex-wrap: wrap;">
+          <span>🎯 50/50:</span>
+          <button class="btn btn-secondary btn-sm fifty-option" data-val="${c1}">${c1}</button>
+          <button class="btn btn-secondary btn-sm fifty-option" data-val="${c2}">${c2}</button>
+        </div>
+      `;
     }
 
     // Auto-solve button if active and not yet used
@@ -835,6 +894,19 @@ export class App {
       });
     });
 
+    // 50/50 option buttons
+    document.querySelectorAll('.fifty-option').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.preventDefault();
+        const gs = this.gameState;
+        if (!gs || gs.isShowingExplanation) return;
+        gs.userAnswer = String(btn.dataset.val);
+        const answerText = document.getElementById('answerText');
+        if (answerText) answerText.textContent = gs.userAnswer;
+        this.submitAnswer();
+      });
+    });
+
     // Close button
     const closeBtn = document.getElementById('gameCloseBtn');
     if (closeBtn) {
@@ -846,7 +918,7 @@ export class App {
     if (autoSolveBtn) {
       autoSolveBtn.addEventListener('click', () => {
         const gs = this.gameState;
-        if (!gs) return;
+        if (!gs || gs.isShowingExplanation) return;
         const q = gs.questions[gs.currentQuestion];
         gs.userAnswer = String(q.answer);
         gs.autoSolveUsed = true;
@@ -861,7 +933,7 @@ export class App {
     if (phoneFriendBtn) {
       phoneFriendBtn.addEventListener('click', () => {
         const gs = this.gameState;
-        if (!gs) return;
+        if (!gs || gs.isShowingExplanation) return;
         gs.phoneFriendUsed = true;
         this.showToast('📞 Friend called: question skipped!', 'success');
         this.stopTimer();
@@ -888,17 +960,6 @@ export class App {
         this.renderGameScreen();
       });
     }
-
-    // Keyboard support
-    this._keyHandler = (e) => {
-      if (this.currentScreen !== 'game') return;
-      if (e.key >= '0' && e.key <= '9') this.handleKeyPress(e.key);
-      else if (e.key === '.') this.handleKeyPress('.');
-      else if (e.key === '-') this.handleKeyPress('-');
-      else if (e.key === 'Backspace') this.handleKeyPress('backspace');
-      else if (e.key === 'Enter') this.handleKeyPress('submit');
-    };
-    document.addEventListener('keydown', this._keyHandler);
   }
 
   handleKeyPress(key) {
@@ -933,7 +994,7 @@ export class App {
 
   submitAnswer() {
     const gs = this.gameState;
-    if (!gs || gs.userAnswer === '' || gs.userAnswer === '-') return;
+    if (!gs || gs.isShowingExplanation || gs.userAnswer === '' || gs.userAnswer === '-') return;
 
     const q = gs.questions[gs.currentQuestion];
     const answerTime = Date.now() - this.questionStartTime;
@@ -959,35 +1020,46 @@ export class App {
       if (state.get('haptics')) Haptics.success();
 
       // Calculate coins for this question
-      let qCoins = gs.level * gs.diffConfig.multiplier;
+      let qCoins = 0;
+      if (gs.isPractice) {
+        // Practice mode: calibrated coins per correct answer + habit power
+        qCoins = Math.max(5, (Number(gs.level) || 1) * 10);
+        if (state.hasHabitPower()) qCoins *= 5;
+        if (gs.correctCount === 9) {
+          // 10th correct answer triggers the perfect drill bonus
+          qCoins += (Number(gs.level) || 1) * 50 * (state.hasHabitPower() ? 5 : 1);
+        }
+      } else {
+        qCoins = gs.level * gs.diffConfig.multiplier;
 
-      if (state.isCoffeeBoostActive()) qCoins = Math.floor(qCoins * 1.5);
-      if (state.get('lifetimeCoffee')) qCoins = Math.floor(qCoins * 1.25);
-      if (state.isWeekendWarriorActive && state.isWeekendWarriorActive()) qCoins *= 2;
+        if (state.isCoffeeBoostActive()) qCoins = Math.floor(qCoins * 1.5);
+        if (state.get('lifetimeCoffee')) qCoins = Math.floor(qCoins * 1.25);
+        if (state.isWeekendWarriorActive && state.isWeekendWarriorActive()) qCoins *= 2;
 
-      // Pre-armed boosts
-      if (gs.rocketFuelActive) qCoins *= 3;
-      if (gs.cloverChainActive) {
-        gs.consecutiveCorrect = (gs.consecutiveCorrect || 0) + 1;
-        const bonusPct = Math.min(gs.consecutiveCorrect * 0.01, 0.30);
-        qCoins = Math.floor(qCoins * (1 + bonusPct));
-      }
-      if (gs.goldRushAvailable) {
-        qCoins *= 3;
-        gs.goldRushAvailable = false; // one-shot
-        this.showToast('💰 Gold Rush! 3× this answer', 'gold');
-      }
+        // Pre-armed boosts
+        if (gs.rocketFuelActive) qCoins *= 3;
+        if (gs.cloverChainActive) {
+          gs.consecutiveCorrect = (gs.consecutiveCorrect || 0) + 1;
+          const bonusPct = Math.min(gs.consecutiveCorrect * 0.01, 0.30);
+          qCoins = Math.floor(qCoins * (1 + bonusPct));
+        }
+        if (gs.goldRushAvailable) {
+          qCoins *= 3;
+          gs.goldRushAvailable = false; // one-shot
+          this.showToast('💰 Gold Rush! 3× this answer', 'gold');
+        }
 
-      // Lucky 13 (13x)
-      if (isLucky13) {
-        qCoins *= 13;
-        this.triggerLucky13();
-        state.set('lucky13Count', (state.get('lucky13Count') || 0) + 1);
-      }
+        // Lucky 13 (13x)
+        if (isLucky13) {
+          qCoins *= 13;
+          this.triggerLucky13();
+          state.set('lucky13Count', (state.get('lucky13Count') || 0) + 1);
+        }
 
-      // 21-Day Habit Power (5x multiplier on all coins earned, effectively 65x if Lucky 13 triggered!)
-      if (state.hasHabitPower()) {
-        qCoins *= 5;
+        // 21-Day Habit Power (5x multiplier on all coins earned, effectively 65x if Lucky 13 triggered!)
+        if (state.hasHabitPower()) {
+          qCoins *= 5;
+        }
       }
 
       gs.setCoins += qCoins;
@@ -1000,7 +1072,7 @@ export class App {
       const showMental = gs.isPractice && (this.sessionMentalMath !== undefined ? this.sessionMentalMath : state.get('showMentalMath'));
       if (showMental) {
         this.stopTimer();
-        this.renderMentalMathExplanation(q, () => {
+        this.renderMentalMathExplanation(q, true, () => {
           gs.currentQuestion++;
           gs.userAnswer = '';
           if (gs.currentQuestion >= 10) {
@@ -1038,7 +1110,7 @@ export class App {
         if (state.get('soundEffects')) SFX.wrong();
         if (state.get('haptics')) Haptics.medium();
         this.stopTimer();
-        this.renderMentalMathExplanation(q, () => {
+        this.renderMentalMathExplanation(q, false, () => {
           gs.currentQuestion++;
           gs.userAnswer = '';
           if (gs.currentQuestion >= 10) {
@@ -1051,13 +1123,13 @@ export class App {
         return;
       }
 
-      // Check safety pin or rewind time
-      if (gs.safetyArmed) {
-        // Safety pin / Shield Wall / Rewind Time absorbs the hit
-        gs.safetyArmed = false;
+      // Multi-defense check: safety pins, shield wall, rewind time
+      if (gs.safetyHitsRemaining > 0) {
+        gs.safetyHitsRemaining--;
+        gs.safetyArmed = gs.safetyHitsRemaining > 0;
         if (state.get('soundEffects')) SFX.wrong();
         if (state.get('haptics')) Haptics.medium();
-        this.showToast('🧷 Safety Pin saved you!', 'success');
+        this.showToast(gs.safetyHitsRemaining > 0 ? `🛡️ Defense absorbed hit! (${gs.safetyHitsRemaining} shield left)` : '🧷 Safety protection used!', 'success');
         
         setTimeout(() => {
           gs.userAnswer = '';
@@ -1073,25 +1145,31 @@ export class App {
     }
   }
 
-  renderMentalMathExplanation(q, onNext) {
+  renderMentalMathExplanation(q, isCorrect, onNext) {
+    const gs = this.gameState;
+    if (gs) gs.isShowingExplanation = true;
     const cardArea = document.getElementById('mentalMathCardArea');
     if (!cardArea) {
+      if (gs) gs.isShowingExplanation = false;
       if (onNext) onNext();
       return;
     }
 
     const sol = generateStepByStepMentalSolution(q);
     const stepsHTML = sol.steps.map(s => `<li class="mental-math-step">${s}</li>`).join('');
+    const statusHeader = isCorrect 
+      ? `<div class="mental-math-badge success">✓ Correct · Mental Math Shortcut</div>`
+      : `<div class="mental-math-badge wrong">✗ Not Quite · Correct Answer: <strong>${q.answer}</strong></div>`;
 
     cardArea.innerHTML = `
-      <div class="mental-math-card">
-        <div class="mental-math-badge">💡 Mental Math Method</div>
+      <div class="mental-math-card ${isCorrect ? 'is-correct' : 'is-wrong'}">
+        ${statusHeader}
         <div class="mental-math-strategy">${sol.strategy}</div>
         <ul class="mental-math-steps">
           ${stepsHTML}
         </ul>
         <div class="mental-math-tip">⭐ Pro Tip: ${sol.tip}</div>
-        <button class="btn btn-primary btn-full btn-sm" id="btnNextMentalQ" style="margin-top: var(--space-sm);">
+        <button class="btn btn-primary btn-full btn-sm" id="nextPracticeQBtn" style="margin-top: var(--space-sm);">
           Next Question ›
         </button>
       </div>
@@ -1100,9 +1178,10 @@ export class App {
     // Disable numpad during explanation to prevent accidental inputs
     document.querySelectorAll('.numpad-key').forEach(k => { k.disabled = true; k.style.opacity = '0.5'; });
 
-    const btnNext = document.getElementById('btnNextMentalQ');
+    const btnNext = document.getElementById('nextPracticeQBtn');
     if (btnNext) {
       btnNext.addEventListener('click', () => {
+        if (gs) gs.isShowingExplanation = false;
         if (onNext) onNext();
       });
     }
@@ -1181,9 +1260,8 @@ export class App {
       const pointsEarned = gs.correctCount * PRACTICE_POINTS_PER_CORRECT;
       state.addPracticePoints(gs.level, gs.practiceOp, pointsEarned);
       
-      // Award coins for practice set completion
-      const practiceCoins = state.calculatePracticeCoins(gs.level, gs.correctCount);
-      state.addCoins(practiceCoins);
+      // Award practice coins directly from gs.setCoins
+      state.addCoins(gs.setCoins);
 
       state.update({
         totalGamesPlayed: state.get('totalGamesPlayed') + 1,
@@ -1192,7 +1270,7 @@ export class App {
       });
 
       this.handlePostGameUpdates();
-      this.showResults(gs, practiceCoins, 0, null, pointsEarned);
+      this.showResults(gs, gs.setCoins, 0, null, pointsEarned);
       return;
     }
 
@@ -1253,16 +1331,22 @@ export class App {
     const streakIncreased = state.incrementStreak();
     if (streakIncreased) {
       const s = state.get('streakCount');
+      const reward = state.collectStreakReward();
       if (s > 1) {
         setTimeout(() => {
            this.triggerStreakCelebration(s);
         }, 800);
       }
+      if (reward > 0) {
+        setTimeout(() => {
+          this.showToast(`🔥 Streak Reward Collected! +${this.formatNumber(reward)}🪙`, 'gold');
+        }, 1500);
+      }
       // Check 50-day milestone bonus
       const milestone = state.getMilestoneBonus(s);
       if (milestone) {
         setTimeout(() => {
-          this.showToast(`🎉 ${milestone.label}! +${milestone.coins}🪙 +${milestone.plectrums}🎸`, 'gold');
+          this.showToast(`🎉 ${milestone.label}! +${this.formatNumber(milestone.coins)}🪙 +${milestone.plectrums}🎸`, 'gold');
           this.spawnSparkles(35);
           if (state.get('soundEffects')) SFX.lucky13();
         }, 2200);
@@ -1274,7 +1358,7 @@ export class App {
     const reward = state.claimChallengeReward();
     if (reward) {
       setTimeout(() => {
-        this.showToast(`🏆 Daily Challenge Complete! +${reward.coins}🪙 +${reward.plectrums}🎸`, 'gold');
+        this.showToast(`🏆 Daily Challenge Complete! +${this.formatNumber(reward.coins)}🪙 +${reward.plectrums}🎸`, 'gold');
         this.spawnSparkles(20);
         if (state.get('soundEffects')) SFX.levelComplete();
       }, 1500);
@@ -1516,7 +1600,7 @@ export class App {
       return `<button class="${cls}" data-category="${cat.id}"${aria}>${cat.emoji} ${cat.label}</button>`;
     }).join('');
 
-    const items = SHOP_CATEGORIES[activeCategory]?.items || [];
+    const items = getShopItems(activeCategory);
     const stateData = {
       unlockedThemes: state.get('unlockedThemes'),
       currentTheme: state.get('currentTheme'),
@@ -1529,6 +1613,7 @@ export class App {
       goldenAura: state.get('goldenAura'),
       plectrumGod: state.get('plectrumGod'),
       inventory: state.get('inventory'),
+      ...state.state,
     };
 
     const itemsHTML = items.map(item => {
@@ -1598,7 +1683,7 @@ export class App {
   }
 
   handleShopItemClick(itemId, category) {
-    const items = SHOP_CATEGORIES[category]?.items || [];
+    const items = getShopItems(category);
     const item = items.find(i => i.id === itemId);
     if (!item) return;
 
@@ -1607,8 +1692,14 @@ export class App {
       currentTheme: state.get('currentTheme'),
       unlockedSounds: state.get('unlockedSounds'),
       enterSound: state.get('enterSound'),
+      unlockedAvatars: state.get('unlockedAvatars') || [],
+      currentAvatar: state.get('currentAvatar'),
       holographicName: state.get('holographicName'),
+      vipStatus: state.get('vipStatus'),
+      goldenAura: state.get('goldenAura'),
+      plectrumGod: state.get('plectrumGod'),
       inventory: state.get('inventory'),
+      ...state.state,
     };
 
     const status = getItemStatus(itemId, stateData);
@@ -2039,89 +2130,21 @@ export class App {
     const resetBtn = document.getElementById('resetProgress');
     if (resetBtn) {
       resetBtn.addEventListener('click', () => {
-        if (confirm('Are you sure? This will reset ALL progress, coins, and items!')) {
-          state.resetState();
-          document.documentElement.setAttribute('data-theme', 'midnights');
-          this.render();
-        }
+        this.showResetConfirmModal();
       });
     }
 
     const exportBtn = document.getElementById('exportProgress');
     if (exportBtn) {
       exportBtn.addEventListener('click', () => {
-        try {
-          const payload = state.exportAll();
-          const jsonStr = JSON.stringify(payload, null, 2);
-          const blob = new Blob([jsonStr], { type: 'application/json' });
-          const url = URL.createObjectURL(blob);
-          const dlAnchorElem = document.createElement('a');
-          dlAnchorElem.setAttribute("href", url);
-          dlAnchorElem.setAttribute("download", `mathx_save_${new Date().getTime()}.json`);
-          document.body.appendChild(dlAnchorElem);
-          dlAnchorElem.click();
-          dlAnchorElem.remove();
-          setTimeout(() => URL.revokeObjectURL(url), 1000);
-          this.showToast('Backup file downloaded! 📥', 'success');
-        } catch (e) {
-          // Clipboard fallback if file saving fails on restricted platforms
-          const payload = state.exportAll();
-          const jsonStr = JSON.stringify(payload, null, 2);
-          navigator.clipboard?.writeText(jsonStr).then(() => {
-            this.showToast('Save copied to clipboard! 📋', 'success');
-          }).catch(() => {
-            prompt('Copy your save data below:', jsonStr);
-          });
-        }
+        this.showExportModal();
       });
     }
 
     const importBtn = document.getElementById('importProgress');
-    const importFile = document.getElementById('importFile');
-    if (importBtn && importFile) {
+    if (importBtn) {
       importBtn.addEventListener('click', () => {
-        // Choice: file picker or paste JSON
-        const choice = confirm('Press OK to choose a backup file from your device, or CANCEL to paste JSON text.');
-        if (choice) {
-          importFile.click();
-        } else {
-          const pasted = prompt('Paste your backup JSON text here:');
-          if (pasted && pasted.trim()) {
-            try {
-              const data = JSON.parse(pasted.trim());
-              const ok = state.importAll(data);
-              if (ok) {
-                this.showToast('Save data restored successfully! 🎉', 'success');
-                setTimeout(() => this.render(), 500);
-              } else {
-                this.showToast('Save format not recognized.', 'error');
-              }
-            } catch (err) {
-              this.showToast('Invalid JSON save text.', 'error');
-            }
-          }
-        }
-      });
-
-      importFile.addEventListener('change', (e) => {
-        const file = e.target.files[0];
-        if (!file) return;
-        const reader = new FileReader();
-        reader.onload = (ev) => {
-          try {
-            const data = JSON.parse(ev.target.result);
-            const ok = state.importAll(data);
-            if (ok) {
-              this.showToast('Save file loaded successfully! 🎉', 'success');
-              setTimeout(() => this.render(), 500);
-            } else {
-              this.showToast('Save file format not recognized.', 'error');
-            }
-          } catch (err) {
-            this.showToast('Failed to load save file.', 'error');
-          }
-        };
-        reader.readAsText(file);
+        this.showImportModal();
       });
     }
 
@@ -2132,13 +2155,247 @@ export class App {
     if (renameBtn) renameBtn.addEventListener('click', () => {
       const ap = state.getActiveProfile();
       if (!ap) return;
-      const name = prompt('New name?', ap.name);
-      if (name && name.trim()) {
-        state.renameProfile(ap.id, name.trim());
+      this.showRenameProfileModal(ap);
+    });
+  }
+
+  showExportModal() {
+    let modal = document.getElementById('exportModal');
+    if (!modal) {
+      modal = document.createElement('div');
+      modal.id = 'exportModal';
+      modal.className = 'avatar-modal';
+      document.body.appendChild(modal);
+    }
+
+    const payload = state.exportAll();
+    const jsonStr = JSON.stringify(payload, null, 2);
+
+    modal.innerHTML = `
+      <div class="purchase-modal-bg" id="exportModalBg"></div>
+      <div class="avatar-picker-card" style="max-width: 480px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-sm);">
+          <div style="font-family: var(--font-display); font-weight: 800; font-size: var(--fs-xl);">Export Backup</div>
+          <button class="game-close-btn" id="exportModalClose" style="position: static;">✕</button>
+        </div>
+        <div style="font-size: var(--fs-xs); color: var(--text-secondary); margin-bottom: var(--space-sm);">
+          Save this data to transfer your profiles, coins, and progress to another device.
+        </div>
+        <textarea readonly class="settings-textarea" id="exportJsonText" style="width: 100%; height: 160px; font-family: var(--font-mono); font-size: 11px; padding: var(--space-sm); border-radius: var(--radius-md); background: var(--bg-primary); color: var(--text-primary); border: var(--border-subtle); resize: none; margin-bottom: var(--space-sm);">${jsonStr}</textarea>
+        <div style="display: flex; gap: var(--space-sm); margin-bottom: var(--space-sm);">
+          <button class="btn btn-primary btn-full" id="exportCopyBtn">📋 Copy JSON</button>
+          <button class="btn btn-secondary btn-full" id="exportDownloadBtn">📥 Download File</button>
+        </div>
+        <button class="btn btn-secondary btn-full" id="exportModalDone">Done</button>
+      </div>
+    `;
+
+    modal.classList.add('show');
+    const closeModal = () => modal.classList.remove('show');
+    document.getElementById('exportModalBg').onclick = closeModal;
+    document.getElementById('exportModalClose').onclick = closeModal;
+    document.getElementById('exportModalDone').onclick = closeModal;
+
+    const copyBtn = document.getElementById('exportCopyBtn');
+    copyBtn.onclick = () => {
+      const textarea = document.getElementById('exportJsonText');
+      textarea.select();
+      navigator.clipboard?.writeText(jsonStr).then(() => {
+        this.showToast('Save copied to clipboard! 📋', 'success');
+      }).catch(() => {
+        document.execCommand('copy');
+        this.showToast('Save copied to clipboard! 📋', 'success');
+      });
+    };
+
+    const dlBtn = document.getElementById('exportDownloadBtn');
+    dlBtn.onclick = () => {
+      try {
+        const blob = new Blob([jsonStr], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `mathx_save_${Date.now()}.json`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+        this.showToast('Download started! 📥', 'success');
+      } catch (e) {
+        this.showToast('Use "Copy JSON" on this device', 'error');
+      }
+    };
+  }
+
+  showImportModal() {
+    let modal = document.getElementById('importModal');
+    if (!modal) {
+      modal = document.createElement('div');
+      modal.id = 'importModal';
+      modal.className = 'avatar-modal';
+      document.body.appendChild(modal);
+    }
+
+    modal.innerHTML = `
+      <div class="purchase-modal-bg" id="importModalBg"></div>
+      <div class="avatar-picker-card" style="max-width: 480px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-sm);">
+          <div style="font-family: var(--font-display); font-weight: 800; font-size: var(--fs-xl);">Restore Backup</div>
+          <button class="game-close-btn" id="importModalClose" style="position: static;">✕</button>
+        </div>
+        <div style="font-size: var(--fs-xs); color: var(--text-secondary); margin-bottom: var(--space-sm);">
+          Choose a backup JSON file or paste your save text below:
+        </div>
+        <input type="file" id="modalImportFileInput" accept=".json,application/json" style="display: none;" />
+        <button class="btn btn-secondary btn-full" id="btnPickImportFile" style="margin-bottom: var(--space-sm);">
+          📁 Choose Backup File (.json)
+        </button>
+        <textarea class="settings-textarea" id="importJsonInput" placeholder="Or paste backup JSON code here..." style="width: 100%; height: 120px; font-family: var(--font-mono); font-size: 11px; padding: var(--space-sm); border-radius: var(--radius-md); background: var(--bg-primary); color: var(--text-primary); border: var(--border-subtle); resize: none; margin-bottom: var(--space-sm);"></textarea>
+        <div style="display: flex; gap: var(--space-sm);">
+          <button class="btn btn-secondary btn-full" id="importModalCancel">Cancel</button>
+          <button class="btn btn-primary btn-full" id="importModalRestore">Restore Data</button>
+        </div>
+      </div>
+    `;
+
+    modal.classList.add('show');
+    const closeModal = () => modal.classList.remove('show');
+    document.getElementById('importModalBg').onclick = closeModal;
+    document.getElementById('importModalClose').onclick = closeModal;
+    document.getElementById('importModalCancel').onclick = closeModal;
+
+    const fileInput = document.getElementById('modalImportFileInput');
+    const pickBtn = document.getElementById('btnPickImportFile');
+    pickBtn.onclick = () => fileInput.click();
+
+    fileInput.onchange = (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        try {
+          const data = JSON.parse(ev.target.result);
+          const ok = state.importAll(data);
+          if (ok) {
+            this.showToast('Save file restored successfully! 🎉', 'success');
+            closeModal();
+            setTimeout(() => this.render(), 400);
+          } else {
+            this.showToast('Unrecognized save format.', 'error');
+          }
+        } catch (err) {
+          this.showToast('Invalid JSON in save file.', 'error');
+        }
+      };
+      reader.readAsText(file);
+    };
+
+    const restoreBtn = document.getElementById('importModalRestore');
+    restoreBtn.onclick = () => {
+      const text = document.getElementById('importJsonInput').value.trim();
+      if (!text) {
+        this.showToast('Please paste save JSON first.', 'error');
+        return;
+      }
+      try {
+        const data = JSON.parse(text);
+        const ok = state.importAll(data);
+        if (ok) {
+          this.showToast('Save data restored successfully! 🎉', 'success');
+          closeModal();
+          setTimeout(() => this.render(), 400);
+        } else {
+          this.showToast('Unrecognized save format.', 'error');
+        }
+      } catch (err) {
+        this.showToast('Invalid JSON format.', 'error');
+      }
+    };
+  }
+
+  showRenameProfileModal(profile) {
+    let modal = document.getElementById('renameModal');
+    if (!modal) {
+      modal = document.createElement('div');
+      modal.id = 'renameModal';
+      modal.className = 'avatar-modal';
+      document.body.appendChild(modal);
+    }
+
+    modal.innerHTML = `
+      <div class="purchase-modal-bg" id="renameModalBg"></div>
+      <div class="avatar-picker-card" style="max-width: 380px;">
+        <div style="font-family: var(--font-display); font-weight: 800; font-size: var(--fs-xl); margin-bottom: var(--space-sm);">
+          Rename Profile
+        </div>
+        <input type="text" id="renameInput" maxlength="20" value="${this.escapeHtml(profile.name)}" class="profile-name-input" style="width: 100%; margin-bottom: var(--space-md);" />
+        <div style="display: flex; gap: var(--space-sm);">
+          <button class="btn btn-secondary btn-full" id="renameCancel">Cancel</button>
+          <button class="btn btn-primary btn-full" id="renameSave">Save</button>
+        </div>
+      </div>
+    `;
+
+    modal.classList.add('show');
+    const input = document.getElementById('renameInput');
+    input.focus();
+    input.select();
+
+    const closeModal = () => modal.classList.remove('show');
+    document.getElementById('renameModalBg').onclick = closeModal;
+    document.getElementById('renameCancel').onclick = closeModal;
+
+    document.getElementById('renameSave').onclick = () => {
+      const newName = input.value.trim();
+      if (newName) {
+        state.renameProfile(profile.id, newName);
+        this.showToast('Profile renamed! ✨', 'success');
+        closeModal();
         document.getElementById('screen-profile').innerHTML = this.renderProfileScreen();
         this.bindProfileEvents();
+        this.bindProfileBubble();
       }
-    });
+    };
+  }
+
+  showResetConfirmModal() {
+    let modal = document.getElementById('resetModal');
+    if (!modal) {
+      modal = document.createElement('div');
+      modal.id = 'resetModal';
+      modal.className = 'avatar-modal';
+      document.body.appendChild(modal);
+    }
+
+    modal.innerHTML = `
+      <div class="purchase-modal-bg" id="resetModalBg"></div>
+      <div class="avatar-picker-card" style="max-width: 380px; text-align: center;">
+        <div style="font-size: 40px; margin-bottom: var(--space-xs);">⚠️</div>
+        <div style="font-family: var(--font-display); font-weight: 800; font-size: var(--fs-xl); margin-bottom: var(--space-xs);">
+          Reset All Progress?
+        </div>
+        <div style="font-size: var(--fs-xs); color: var(--text-secondary); margin-bottom: var(--space-md);">
+          This will reset coins, stars, inventory, and unlockables for this profile.
+        </div>
+        <div style="display: flex; gap: var(--space-sm);">
+          <button class="btn btn-secondary btn-full" id="resetCancel">Cancel</button>
+          <button class="btn btn-primary btn-full" id="resetConfirm" style="background: var(--error);">Reset</button>
+        </div>
+      </div>
+    `;
+
+    modal.classList.add('show');
+    const closeModal = () => modal.classList.remove('show');
+    document.getElementById('resetModalBg').onclick = closeModal;
+    document.getElementById('resetCancel').onclick = closeModal;
+
+    document.getElementById('resetConfirm').onclick = () => {
+      state.resetState();
+      document.documentElement.setAttribute('data-theme', 'midnights');
+      closeModal();
+      this.showToast('Progress reset.', 'success');
+      this.render();
+    };
   }
 
   showAvatarPickerModal() {
@@ -2173,7 +2430,10 @@ export class App {
         <div class="avatar-grid">
           ${gridHTML}
         </div>
-        <button class="btn btn-secondary btn-full" id="avatarModalDone">Done</button>
+        <div style="display: flex; gap: var(--space-sm); margin-top: var(--space-xs);">
+          <button class="btn btn-secondary btn-full" id="avatarModalShop">Shop 🛍️</button>
+          <button class="btn btn-primary btn-full" id="avatarModalDone">Done</button>
+        </div>
       </div>
     `;
 
@@ -2183,6 +2443,16 @@ export class App {
     document.getElementById('avatarModalBg').onclick = closeModal;
     document.getElementById('avatarModalClose').onclick = closeModal;
     document.getElementById('avatarModalDone').onclick = closeModal;
+
+    const shopBtn = document.getElementById('avatarModalShop');
+    if (shopBtn) {
+      shopBtn.onclick = () => {
+        closeModal();
+        this._shopCategory = 'avatars';
+        this.navigateTo('shop');
+        this.refreshShop();
+      };
+    }
 
     modal.querySelectorAll('.avatar-grid-item').forEach(btn => {
       btn.addEventListener('click', () => {

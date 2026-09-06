@@ -262,11 +262,22 @@ function generateStepByStepMentalSolution(q) {
       if (other < 100) {
         const d1 = Math.floor(other / 10);
         const d2 = other % 10;
+        const sum = d1 + d2;
+        if (sum >= 10) {
+          return {
+            strategy: 'Vedic 11 Sandwich Shortcut (with Carry)',
+            steps: [
+              `Sum of digits: ${d1} + ${d2} = ${sum}`,
+              `Place ${sum % 10} in middle, carry 1 to ${d1}: (${d1} + 1)${sum % 10}${d2} = ${answer}`,
+            ],
+            tip: 'If the sum is 10 or more, carry the 1 over to the hundreds digit!'
+          };
+        }
         return {
           strategy: 'Vedic 11 Sandwich Shortcut',
           steps: [
-            `Sum of digits: ${d1} + ${d2} = ${d1 + d2}`,
-            `Sandwich the sum between the digits: ${answer}`,
+            `Sum of digits: ${d1} + ${d2} = ${sum}`,
+            `Sandwich the sum between the digits: ${d1}${sum}${d2} = ${answer}`,
           ],
           tip: 'When multiplying a 2-digit number by 11, place their sum in the center!'
         };
