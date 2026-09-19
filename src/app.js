@@ -5,7 +5,7 @@
 
 import { state } from './state.js';
 import { 
-  generateQuestionSet, checkAnswer, getLevelConfig, getDifficultyConfig, calculateCoins, LEVEL_CONFIG,
+  generateQuestionSet, checkAnswer, getLevelConfig, getDifficultyConfig, calculateCoins, calculateSetBonuses, LEVEL_CONFIG,
   generatePracticeSet, getAvailableOps, SKILL_CONFIG, PRACTICE_POINTS_REQUIRED, PRACTICE_POINTS_PER_CORRECT,
   getPrePracticeLesson
 } from './engine.js';
@@ -608,7 +608,7 @@ export class App {
       { key: 'shieldWall',      name: 'Shield Wall',       emoji: '🛡️', desc: 'Auto-absorbs first wrong answer.' },
       { key: 'luckyClover',     name: 'Lucky Clover',      emoji: '🍀', desc: '+15% Lucky 13 chance this set.' },
       { key: 'goldRush',        name: 'Gold Rush',         emoji: '💰', desc: 'Triples one correct answer reward.' },
-      { key: 'rocketFuel',      name: 'Rocket Fuel',       emoji: '🚀', desc: '3× coins for this entire set.' },
+      { key: 'rocketFuel',      name: 'Rocket Fuel',       emoji: '🚀', desc: '+200% coins for this entire set.' },
       { key: 'cloverChain',     name: 'Clover Chain',      emoji: '☘️', desc: 'Streak bonus stacks per correct.' },
       { key: 'crystalBall',     name: 'Crystal Ball',      emoji: '🔮', desc: 'Reveals first digit of Q1.' },
       { key: 'fiftyFifty',      name: '50/50',             emoji: '🎯', desc: 'Eliminates distraction digits.' },
@@ -618,7 +618,12 @@ export class App {
       { key: 'phoneAFriend',    name: 'Phone a Friend',    emoji: '📞', desc: 'Skips 1 problem without penalty.' },
       { key: 'rewindTime',      name: 'Rewind Time',       emoji: '⏪', desc: 'Gives a second chance on timeout/mistake.' },
       { key: 'doubleOrNothing', name: 'Double or Nothing', emoji: '🎲', desc: '2× set coin payout if 100% correct.' },
-    ].filter(p => (inv[p.key] || 0) > 0 && (!p.timedOnly || diffConfig.timer));
+      { key: 'morningSun',     name: 'Morning Sun',       emoji: '🌅', desc: '2× set coins (first set of the day).', morningSunOnly: true },
+      { key: 'comboCarnival',   name: 'Combo Carnival',    emoji: '🎪', desc: '3× perfect set bonus for this set.' },
+      { key: 'doubleDip',       name: 'Double Dip',        emoji: '🍦', desc: 'Earn coins AND practice points on this quiz.' },
+      { key: 'coffeeBoosts',    name: 'Coffee Boost',      emoji: '☕', desc: '+50% coins for 30 minutes.' },
+      { key: 'weekendWarrior',  name: 'Weekend Warrior',   emoji: '🎉', desc: '2× coins for 1 hour.' },
+    ].filter(p => (inv[p.key] || 0) > 0 && (!p.timedOnly || diffConfig.timer) && (!p.morningSunOnly || state.canUseMorningSun()));
 
     const screen = document.getElementById('screen-game');
     const itemsHTML = armable.length === 0
@@ -660,8 +665,12 @@ export class App {
     document.getElementById('ppStartBtn').onclick = () => {
       const selected = {};
       screen.querySelectorAll('input[type="checkbox"]:checked').forEach(cb => {
-        selected[cb.dataset.key] = true;
-        state.useItem(cb.dataset.key); // consume now
+        const k = cb.dataset.key;
+        selected[k] = true;
+        state.useItem(k); // consume now
+        if (k === 'coffeeBoosts') state.activateCoffeeBoost();
+        if (k === 'weekendWarrior') state.activateWeekendWarrior();
+        if (k === 'doubleDip') state.activateDoubleDip();
       });
       this._actuallyStartGame(level, difficulty, selected);
     };
@@ -720,6 +729,9 @@ export class App {
       hintMasterActive: !!armed.hintMaster,
       phoneAFriendAvailable: !!armed.phoneAFriend,
       doubleOrNothingActive: !!armed.doubleOrNothing,
+      morningSunActive: !!armed.morningSun,
+      comboCarnivalActive: !!armed.comboCarnival,
+      doubleDipActive: !!armed.doubleDip,
       isShowingExplanation: false,
     };
 
@@ -1023,43 +1035,61 @@ export class App {
       let qCoins = 0;
       if (gs.isPractice) {
         // Practice mode: calibrated coins per correct answer + habit power
-        qCoins = Math.max(5, (Number(gs.level) || 1) * 10);
-        if (state.hasHabitPower()) qCoins *= 5;
+        qCoins = Math.max(2, (Number(gs.level) || 1) * 3);
+        if (state.hasHabitPower()) qCoins = Math.round(qCoins * 1.25);
         if (gs.correctCount === 9) {
           // 10th correct answer triggers the perfect drill bonus
-          qCoins += (Number(gs.level) || 1) * 50 * (state.hasHabitPower() ? 5 : 1);
+          qCoins += Math.round((Number(gs.level) || 1) * 10 * (state.hasHabitPower() ? 1.25 : 1));
         }
       } else {
-        qCoins = gs.level * gs.diffConfig.multiplier;
+        const lvl = Number(gs.level) || 1;
+        const diffMult = (gs.diffConfig && gs.diffConfig.multiplier) || 1;
+        const baseQ = lvl * 10 * diffMult;
 
-        if (state.isCoffeeBoostActive()) qCoins = Math.floor(qCoins * 1.5);
-        if (state.get('lifetimeCoffee')) qCoins = Math.floor(qCoins * 1.25);
-        if (state.isWeekendWarriorActive && state.isWeekendWarriorActive()) qCoins *= 2;
+        // Calculate additive boost multiplier
+        let boostPct = 0;
 
-        // Pre-armed boosts
-        if (gs.rocketFuelActive) qCoins *= 3;
+        // Timed Coffee Boost (+50%)
+        if (state.isCoffeeBoostActive()) boostPct += 0.50;
+
+        // Lifetime Coffee Permanent (+25%)
+        if (state.get('lifetimeCoffee')) boostPct += 0.25;
+
+        // Weekend Warrior (+100%)
+        if (state.isWeekendWarriorActive && state.isWeekendWarriorActive()) boostPct += 1.00;
+
+        // Pre-armed Rocket Fuel (+200%)
+        if (gs.rocketFuelActive) boostPct += 2.00;
+
+        // Clover Chain: +1% per consecutive correct, up to +30%
         if (gs.cloverChainActive) {
           gs.consecutiveCorrect = (gs.consecutiveCorrect || 0) + 1;
-          const bonusPct = Math.min(gs.consecutiveCorrect * 0.01, 0.30);
-          qCoins = Math.floor(qCoins * (1 + bonusPct));
-        }
-        if (gs.goldRushAvailable) {
-          qCoins *= 3;
-          gs.goldRushAvailable = false; // one-shot
-          this.showToast('💰 Gold Rush! 3× this answer', 'gold');
+          const chainPct = Math.min(gs.consecutiveCorrect * 0.01, 0.30);
+          boostPct += chainPct;
         }
 
-        // Lucky 13 (13x)
+        // Gold Rush: one-shot +200% (3x) on this specific answer
+        if (gs.goldRushAvailable) {
+          boostPct += 2.00;
+          gs.goldRushAvailable = false; // one-shot
+          this.showToast('💰 Gold Rush! 3× coin boost', 'gold');
+        }
+
+        // 21-Day Habit Power (+25%)
+        if (state.hasHabitPower()) {
+          boostPct += 0.25;
+        }
+
+        // Lucky 13 (+300% / 4x effective boost on fast answer)
         if (isLucky13) {
-          qCoins *= 13;
+          boostPct += 3.00;
           this.triggerLucky13();
           state.set('lucky13Count', (state.get('lucky13Count') || 0) + 1);
         }
 
-        // 21-Day Habit Power (5x multiplier on all coins earned, effectively 65x if Lucky 13 triggered!)
-        if (state.hasHabitPower()) {
-          qCoins *= 5;
-        }
+        // Cap total question multiplier at 10.0x to prevent economy runaway
+        const multiplier = Math.min(1 + boostPct, 10.0);
+        qCoins = Math.round(baseQ * multiplier);
       }
 
       gs.setCoins += qCoins;
@@ -1275,7 +1305,20 @@ export class App {
     }
 
     // --- NORMAL QUIZ LOGIC ---
-    let totalCoins = gs.setCoins;
+    const totalPlayTime = Date.now() - (gs.totalStartTime || Date.now());
+    const bonuses = calculateSetBonuses(gs.level, gs.difficulty, gs.correctCount, totalPlayTime, {
+      comboCarnival: gs.comboCarnivalActive
+    });
+
+    let totalCoins = gs.setCoins + bonuses.totalBonuses;
+
+    // Morning Sun boost: 2x set coins for first set of the day
+    if (gs.morningSunActive && state.canUseMorningSun()) {
+      totalCoins *= 2;
+      state.recordMorningSunUsed();
+      this.showToast('🌅 Morning Sun! 2× first-set coins!', 'gold');
+    }
+
     // Double or Nothing powerup: 2x payout if perfect 10/10, otherwise 0
     if (gs.doubleOrNothingActive) {
       if (gs.correctCount === 10) {
@@ -1287,6 +1330,14 @@ export class App {
       }
     }
     state.addCoins(totalCoins);
+
+    // Double Dip powerup: earn practice points on normal quiz
+    if (gs.doubleDipActive || state.isDoubleDipActive()) {
+      const practiceBonus = gs.correctCount * 3;
+      const ops = getAvailableOps(gs.level);
+      ops.forEach(op => state.addPracticePoints(gs.level, op, practiceBonus));
+      this.showToast(`🍦 Double Dip! +${practiceBonus} Practice Points`, 'gold');
+    }
 
     if (gs.difficulty === 'goat') {
       const plectrums = Math.floor(gs.correctCount / 2);
@@ -1323,7 +1374,7 @@ export class App {
 
     const tip = getSmartTip(gs.questions);
     this.handlePostGameUpdates();
-    this.showResults(gs, totalCoins, stars, tip, 0);
+    this.showResults(gs, totalCoins, stars, tip, 0, bonuses);
   }
 
   handlePostGameUpdates() {
@@ -1369,7 +1420,7 @@ export class App {
     if (state.get('soundEffects')) SFX.lucky13(); // Reusing a hype sound
     const overlay = document.createElement('div');
     overlay.className = 'streak-celebration-overlay active';
-    const habitBonusText = streakCount >= 21 ? '<div style="color: #ff8c00; font-size: 16px; margin-top: 8px;">🔥 5× Habit Multiplier Power Active!</div>' : '';
+    const habitBonusText = streakCount >= 21 ? '<div style="color: #ff8c00; font-size: 16px; margin-top: 8px;">🔥 Habit Power Active! (+500🪙 Daily Bonus)</div>' : '';
     overlay.innerHTML = `
       <div class="streak-anim-content">
         <div style="font-size: 80px;">🔥</div>
@@ -1386,7 +1437,7 @@ export class App {
     }, 2000);
   }
 
-  showResults(gs, totalCoins, stars, tip, pointsEarned = 0) {
+  showResults(gs, totalCoins, stars, tip, pointsEarned = 0, bonuses = null) {
     const totalTime = Date.now() - gs.totalStartTime;
     const avgTime = gs.questionTimes.length > 0 
       ? (gs.questionTimes.reduce((a, b) => a + b, 0) / gs.questionTimes.length / 1000).toFixed(1) 
@@ -1451,8 +1502,13 @@ export class App {
           
           <div class="results-coins">
             <span>🪙</span>
-            <span>+${totalCoins}</span>
+            <span>+${this.formatNumber(totalCoins)}</span>
           </div>
+          ${bonuses && bonuses.totalBonuses > 0 ? `
+            <div style="font-size: var(--fs-xs); color: var(--accent); margin-top: -8px; margin-bottom: var(--space-sm); text-align: center;">
+              Includes bonus: ${bonuses.perfectBonus ? `+${bonuses.perfectBonus} perfect ` : ''}${bonuses.speedBonus ? `+${bonuses.speedBonus} speed` : ''}
+            </div>
+          ` : ''}
           
           ${gs.difficulty === 'goat' ? `
             <div style="font-family: var(--font-mono); font-size: var(--fs-sm); color: var(--accent-secondary);">
@@ -1852,6 +1908,10 @@ export class App {
       state.addItem('streakFreezes', 1);
     }
 
+    if (item.id === 'megaPhone' || (item.bundle && item.bundle.megaPhone)) {
+      state.activateMegaPhone();
+    }
+
     this.showToast(`${item.emoji} ${item.name} purchased!`, 'gold');
     this.updateCoinDisplays();
     this.refreshShop();
@@ -2083,15 +2143,71 @@ export class App {
       return `<div class="settings-row"><div class="settings-row-label" style="text-align:center; width:100%; color: var(--text-tertiary);">No items yet — visit the Shop!</div></div>`;
     }
 
-    return items.map(item => `
-      <div class="settings-row">
-        <div class="settings-row-label">${item.emoji} ${item.name}</div>
-        <div class="settings-row-value">${inv[item.key] || 0}</div>
-      </div>
-    `).join('');
+    return items.map(item => {
+      let actionBtn = '';
+      if (item.key === 'coffeeBoosts') {
+        actionBtn = state.isCoffeeBoostActive() 
+          ? '<span class="badge" style="background: var(--gold); color: #000; font-size: 11px; padding: 2px 6px; border-radius: 4px; font-weight: 700;">Active</span>' 
+          : `<button class="btn btn-sm btn-secondary act-inv-btn" data-key="coffeeBoosts" style="padding: 2px 8px; font-size: 11px;">Use</button>`;
+      } else if (item.key === 'weekendWarrior') {
+        actionBtn = state.isWeekendWarriorActive() 
+          ? '<span class="badge" style="background: var(--gold); color: #000; font-size: 11px; padding: 2px 6px; border-radius: 4px; font-weight: 700;">Active</span>' 
+          : `<button class="btn btn-sm btn-secondary act-inv-btn" data-key="weekendWarrior" style="padding: 2px 8px; font-size: 11px;">Use</button>`;
+      } else if (item.key === 'megaPhone') {
+        actionBtn = state.isMegaPhoneActive() 
+          ? '<span class="badge" style="background: var(--gold); color: #000; font-size: 11px; padding: 2px 6px; border-radius: 4px; font-weight: 700;">Active</span>' 
+          : `<button class="btn btn-sm btn-secondary act-inv-btn" data-key="megaPhone" style="padding: 2px 8px; font-size: 11px;">Use</button>`;
+      } else if (item.key === 'doubleDip') {
+        actionBtn = state.isDoubleDipActive() 
+          ? '<span class="badge" style="background: var(--gold); color: #000; font-size: 11px; padding: 2px 6px; border-radius: 4px; font-weight: 700;">Active</span>' 
+          : `<button class="btn btn-sm btn-secondary act-inv-btn" data-key="doubleDip" style="padding: 2px 8px; font-size: 11px;">Use</button>`;
+      } else if (item.key === 'streakFreezes') {
+        actionBtn = '<span style="font-size: 11px; color: var(--accent); font-weight: 600;">Auto-protects</span>';
+      }
+
+      return `
+        <div class="settings-row" style="display: flex; justify-content: space-between; align-items: center;">
+          <div class="settings-row-label">${item.emoji} ${item.name} <span style="opacity: 0.6; font-size: 12px;">(×${inv[item.key] || 0})</span></div>
+          <div class="settings-row-value" style="display: flex; align-items: center; gap: 8px;">
+            ${actionBtn}
+          </div>
+        </div>
+      `;
+    }).join('');
   }
 
   bindProfileEvents() {
+    document.querySelectorAll('.act-inv-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const k = e.currentTarget.dataset.key;
+        if (k === 'coffeeBoosts') {
+          if (state.useItem('coffeeBoosts')) {
+            state.activateCoffeeBoost();
+            this.showToast('☕ Coffee Boost active for 30 minutes!', 'gold');
+            this.renderProfileScreen();
+          }
+        } else if (k === 'weekendWarrior') {
+          if (state.useItem('weekendWarrior')) {
+            state.activateWeekendWarrior();
+            this.showToast('🎉 Weekend Warrior active for 1 hour!', 'gold');
+            this.renderProfileScreen();
+          }
+        } else if (k === 'megaPhone') {
+          if (state.useItem('megaPhone')) {
+            state.activateMegaPhone();
+            this.showToast('📣 Mega Phone active! 2× streak rewards for 7 days!', 'gold');
+            this.renderProfileScreen();
+          }
+        } else if (k === 'doubleDip') {
+          if (state.useItem('doubleDip')) {
+            state.activateDoubleDip();
+            this.showToast('🍦 Double Dip active for 1 hour!', 'gold');
+            this.renderProfileScreen();
+          }
+        }
+      });
+    });
+
     const toggleSound = document.getElementById('toggleSound');
     if (toggleSound) {
       toggleSound.addEventListener('click', () => {

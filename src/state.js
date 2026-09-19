@@ -110,6 +110,9 @@ const DEFAULT_STATE = {
   // Active boosts
   coffeeBoostExpiry: null,
   weekendWarriorExpiry: null,
+  megaPhoneExpiry: null,
+  doubleDipExpiry: null,
+  morningSunLastDate: null,
   streakFreezeActive: false,
 
   // Stats
@@ -482,8 +485,21 @@ class StateManager {
     if (lastPlay === today) return;
     const diffDays = Math.round((new Date(today) - new Date(lastPlay)) / 86400000);
     if (diffDays > 1) {
-      if (this.state.streakFreezeActive) this.update({ streakFreezeActive: false });
-      else this.update({ streakCount: 0, streakRewardCollected: false });
+      const hasArmedFreeze = !!this.state.streakFreezeActive;
+      const invFreezes = (this.state.inventory && this.state.inventory.streakFreezes) || 0;
+
+      if (hasArmedFreeze) {
+        this.update({ streakFreezeActive: false });
+        this._notify('streakSaved', true);
+      } else if (invFreezes > 0) {
+        // Auto-consume 1 streak freeze from inventory to preserve player streak
+        this.state.inventory.streakFreezes--;
+        this._save();
+        this._notify('inventory', this.state.inventory);
+        this._notify('streakSaved', true);
+      } else {
+        this.update({ streakCount: 0, streakRewardCollected: false });
+      }
     } else if (diffDays === 1) {
       // New consecutive day: ready to collect new streak reward
       if (this.state.streakRewardCollected) {
@@ -542,7 +558,7 @@ class StateManager {
     return null;
   }
 
-  // Check if 21-day habit power (5x multiplier) is active
+  // Check if 21-day habit power is active
   hasHabitPower() {
     return (this.state.streakCount || 0) >= 21;
   }
@@ -567,14 +583,19 @@ class StateManager {
     if (streak === 1) base = 100;
     else if (streak === 2) base = 200;
     else if (streak <= 5) base = 200 + (streak - 2) * 150; // 3: 350, 4: 500, 5: 650
-    else if (streak <= 7) base = 650 + (streak - 5) * 350; // 6: 1000, 7: 1350
-    else if (streak <= 14) base = 1350 + (streak - 7) * 200; // 14: 2750
-    else if (streak <= 21) base = 2750 + (streak - 14) * 320; // 21: ~5000
-    else base = 5000;
+    else if (streak <= 7) base = 650 + (streak - 5) * 175; // 6: 825, 7: 1000
+    else if (streak <= 14) base = 1000 + (streak - 7) * 115; // 14: ~1800
+    else if (streak <= 21) base = 1800 + (streak - 14) * 100; // 21: 2500
+    else base = 2500;
 
-    // After 21 days: 5x habit power on all coin earnings including streak rewards!
+    // After 21 days: Habit Power adds +500 daily coins (rewarding consistency without breaking shop economy)
     if (this.hasHabitPower()) {
-      base *= 5;
+      base += 500;
+    }
+
+    // Mega Phone boost: doubles streak reward if active
+    if (this.isMegaPhoneActive()) {
+      base *= 2;
     }
 
     // Add extra milestone bonus if today is a 50-day multiple
@@ -600,15 +621,14 @@ class StateManager {
 
   // Calculate coins for completed practice set
   calculatePracticeCoins(level, correctCount) {
-    const basePerCorrect = Math.max(5, (Number(level) || 1) * 10);
+    const basePerCorrect = Math.max(2, (Number(level) || 1) * 3);
     let coins = correctCount * basePerCorrect;
-    if (correctCount === 10) coins += (Number(level) || 1) * 50; // Perfect drill bonus
-    if (this.hasHabitPower()) coins *= 5; // 5x habit power
+    if (correctCount === 10) coins += (Number(level) || 1) * 10; // Perfect drill bonus
+    if (this.hasHabitPower()) coins = Math.round(coins * 1.25);
     return coins;
   }
 
   isCoffeeBoostActive() {
-    if (this.state.lifetimeCoffee) return true;
     if (!this.state.coffeeBoostExpiry) return false;
     return Date.now() < this.state.coffeeBoostExpiry;
   }
@@ -625,6 +645,34 @@ class StateManager {
 
   activateWeekendWarrior() {
     this.set('weekendWarriorExpiry', Date.now() + 60 * 60 * 1000);
+  }
+
+  isMegaPhoneActive() {
+    if (!this.state.megaPhoneExpiry) return false;
+    return Date.now() < this.state.megaPhoneExpiry;
+  }
+
+  activateMegaPhone() {
+    this.set('megaPhoneExpiry', Date.now() + 7 * 24 * 60 * 60 * 1000);
+  }
+
+  isDoubleDipActive() {
+    if (!this.state.doubleDipExpiry) return false;
+    return Date.now() < this.state.doubleDipExpiry;
+  }
+
+  activateDoubleDip() {
+    this.set('doubleDipExpiry', Date.now() + 60 * 60 * 1000);
+  }
+
+  canUseMorningSun() {
+    const today = new Date().toDateString();
+    return this.state.morningSunLastDate !== today;
+  }
+
+  recordMorningSunUsed() {
+    const today = new Date().toDateString();
+    this.set('morningSunLastDate', today);
   }
 
   resetState() {

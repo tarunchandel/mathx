@@ -29,15 +29,15 @@ const SHOP_CATEGORIES = {
     label: 'Boosts',
     emoji: '🚀',
     items: [
-      { id: 'coffeeBoosts',   name: 'Coffee Boost',   emoji: '☕', description: '1.5× coin earnings for 30 minutes. Stack those coins!',  price: 1000, currency: 'coins', stackable: true, maxStack: 5 },
-      { id: 'streakFreezes',  name: 'Streak Freeze',  emoji: '🧊', description: 'Protect your daily streak if you miss a day.',           price: 800,  currency: 'coins', stackable: true, maxStack: 3 },
+      { id: 'coffeeBoosts',   name: 'Coffee Boost',   emoji: '☕', description: '+50% coin earnings for 30 minutes. Stack those coins!',  price: 1000, currency: 'coins', stackable: true, maxStack: 5 },
+      { id: 'streakFreezes',  name: 'Streak Freeze',  emoji: '🧊', description: 'Protects your daily streak if you miss a day. Auto-protects if owned.', price: 800,  currency: 'coins', stackable: true, maxStack: 3 },
       { id: 'weekendWarrior', name: 'Weekend Warrior',emoji: '🎉', description: '2× coin multiplier for the next 1 hour.',                price: 2000, currency: 'coins', stackable: true, maxStack: 3 },
       // === New 10 boosts ===
       { id: 'xpExtravaganza', name: 'XP Extravaganza',emoji: '📈', description: '+50% practice points for 1 hour.',                       price: 1500, currency: 'coins', stackable: true, maxStack: 5 },
       { id: 'plectrumPower',  name: 'Plectrum Power', emoji: '🎼', description: '2× plectrum drops in GOAT mode for 1 hour.',             price: 2500, currency: 'coins', stackable: true, maxStack: 3 },
       { id: 'rocketFuel',     name: 'Rocket Fuel',    emoji: '🚀', description: '3× coins for the next single set.',                      price: 1800, currency: 'coins', stackable: true, maxStack: 5 },
       { id: 'energyDrink',    name: 'Energy Drink',   emoji: '⚡', description: '+3 sec on every Vibe Check timer for 30 min.',           price: 1200, currency: 'coins', stackable: true, maxStack: 5 },
-      { id: 'morningSun',     name: 'Morning Sun',    emoji: '🌅', description: 'First set of the day pays 5×. Resets at midnight.',     price: 2200, currency: 'coins', stackable: true, maxStack: 3 },
+      { id: 'morningSun',     name: 'Morning Sun',    emoji: '🌅', description: 'First set of the day pays 2× set coins. Resets at midnight.', price: 2200, currency: 'coins', stackable: true, maxStack: 3 },
       { id: 'doubleDip',      name: 'Double Dip',     emoji: '🍦', description: 'Earn coins AND practice points on Quiz sets for 1 hr.',  price: 1700, currency: 'coins', stackable: true, maxStack: 5 },
       { id: 'megaPhone',      name: 'Mega Phone',     emoji: '📣', description: '2× streak reward bonus for the next 7 days.',            price: 3000, currency: 'coins', stackable: true, maxStack: 2 },
       { id: 'turboTimer',     name: 'Turbo Timer',    emoji: '⏱️', description: 'GOAT mode bumped to 4 sec/question for 30 min.',         price: 2000, currency: 'coins', stackable: true, maxStack: 3 },

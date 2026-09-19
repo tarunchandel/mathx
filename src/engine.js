@@ -348,27 +348,43 @@ function getPrePracticeLesson(level, op) {
 }
 
 /**
- * Calculate coins earned for a completed set
+ * Calculate bonus coins earned at set completion (speed bonus and perfect bonus)
  */
-function calculateCoins(level, difficulty, correctCount, totalTime, questionTimes) {
+function calculateSetBonuses(level, difficulty, correctCount, totalTime, options = {}) {
   const diffConfig = getDifficultyConfig(difficulty);
-  const baseCoins = level * 10;
-  const correctBonus = correctCount * baseCoins;
-  const multiplier = diffConfig.multiplier;
-  
-  let total = Math.floor(correctBonus * multiplier);
-  
+  const lvl = Number(level) || 1;
+  let perfectBonus = 0;
+  let speedBonus = 0;
+
   if (correctCount === 10) {
-    total += level * 20;
+    const perfectMultiplier = options.comboCarnival ? 3 : 1;
+    perfectBonus = lvl * 20 * perfectMultiplier;
   }
-  
-  if (diffConfig.timer && totalTime > 0) {
+
+  if (diffConfig && diffConfig.timer && totalTime > 0) {
     const maxTime = diffConfig.timer * 10 * 1000;
-    const timeRatio = 1 - (totalTime / maxTime);
+    const timeRatio = Math.max(0, 1 - (totalTime / maxTime));
     if (timeRatio > 0) {
-      total += Math.floor(timeRatio * level * 15);
+      speedBonus = Math.floor(timeRatio * lvl * 15);
     }
   }
+
+  return { perfectBonus, speedBonus, totalBonuses: perfectBonus + speedBonus };
+}
+
+/**
+ * Calculate coins earned for a completed set
+ */
+function calculateCoins(level, difficulty, correctCount, totalTime, questionTimes, options = {}) {
+  const diffConfig = getDifficultyConfig(difficulty);
+  const lvl = Number(level) || 1;
+  const baseCoins = lvl * 10;
+  const correctBonus = correctCount * baseCoins;
+  const multiplier = (diffConfig && diffConfig.multiplier) || 1;
+  
+  let total = Math.floor(correctBonus * multiplier);
+  const bonuses = calculateSetBonuses(lvl, difficulty, correctCount, totalTime, options);
+  total += bonuses.totalBonuses;
   
   return Math.max(total, 0);
 }
@@ -384,6 +400,7 @@ export {
   getDifficultyConfig, 
   getPrePracticeLesson,
   calculateCoins,
+  calculateSetBonuses,
   LEVEL_CONFIG, 
   DIFFICULTY_CONFIG,
   SKILL_CONFIG,
