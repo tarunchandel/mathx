@@ -357,8 +357,8 @@ function calculateSetBonuses(level, difficulty, correctCount, totalTime, options
   let speedBonus = 0;
 
   if (correctCount === 10) {
-    const perfectMultiplier = options.comboCarnival ? 3 : 1;
-    perfectBonus = lvl * 20 * perfectMultiplier;
+    const perfectMultiplier = (options.comboCarnival ? 3 : 1) * (options.hasHabitPower ? 1.5 : 1);
+    perfectBonus = Math.round(lvl * 50 * perfectMultiplier);
   }
 
   if (diffConfig && diffConfig.timer && totalTime > 0) {

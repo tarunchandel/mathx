@@ -50,12 +50,12 @@ async function deploy() {
     const releaseNotes = [
       {
         language: 'en-US',
-        text: 'MathX v1.0.5: Economy & boost rebalance, active boost activation from inventory, streak auto-freeze protection, and practice set combo & speed bonus breakdown.'
+        text: 'MathX v1.0.6: Practice mode reward calibration, upgraded 21-Day Habit Power bonus (+50%), Lucky 13 13× multiplier, and perfect set bonus celebration.'
       }
     ];
 
     const releasePayload = {
-      name: '1.0.5',
+      name: '1.0.6',
       versionCodes: [String(versionCode)],
       status: 'completed',
       releaseNotes: releaseNotes,
@@ -92,7 +92,7 @@ async function deploy() {
       changesNotSentForReview: false,
     });
     console.log(`   Edit committed successfully! Status: ${commitRes.status}`);
-    console.log(`\n🎉 Successfully deployed MathX v1.0.5 (versionCode ${versionCode}) to Google Play Console on internal and closed (alpha) testing tracks!`);
+    console.log(`\n🎉 Successfully deployed MathX v1.0.6 (versionCode ${versionCode}) to Google Play Console on internal and closed (alpha) testing tracks!`);
 
   } catch (err) {
     console.error('Deployment error:', err.message);

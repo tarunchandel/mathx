@@ -1013,10 +1013,10 @@ export class App {
     gs.questionTimes.push(answerTime);
     const isCorrect = checkAnswer(q, gs.userAnswer);
     
-    // Lucky 13 check (answered in ~1.3s; clover widens the window)
+    // Lucky 13 check (quizzes only; answered in ~1.3s; clover widens the window)
     const timeSec = answerTime / 1000;
     const lucky13Window = gs.luckyCloverActive ? 0.30 : 0.15;
-    const isLucky13 = isCorrect && Math.abs(timeSec - 1.3) < lucky13Window;
+    const isLucky13 = !gs.isPractice && isCorrect && Math.abs(timeSec - 1.3) < lucky13Window;
 
     const answerDisplay = document.getElementById('answerDisplay');
 
@@ -1034,13 +1034,8 @@ export class App {
       // Calculate coins for this question
       let qCoins = 0;
       if (gs.isPractice) {
-        // Practice mode: calibrated coins per correct answer + habit power
-        qCoins = Math.max(2, (Number(gs.level) || 1) * 3);
-        if (state.hasHabitPower()) qCoins = Math.round(qCoins * 1.25);
-        if (gs.correctCount === 9) {
-          // 10th correct answer triggers the perfect drill bonus
-          qCoins += Math.round((Number(gs.level) || 1) * 10 * (state.hasHabitPower() ? 1.25 : 1));
-        }
+        // Practice mode: pure unboosted coins. No boosts, bonuses, or special powers apply.
+        qCoins = Math.max(1, (Number(gs.level) || 1) * 2);
       } else {
         const lvl = Number(gs.level) || 1;
         const diffMult = (gs.diffConfig && gs.diffConfig.multiplier) || 1;
@@ -1075,20 +1070,20 @@ export class App {
           this.showToast('💰 Gold Rush! 3× coin boost', 'gold');
         }
 
-        // 21-Day Habit Power (+25%)
+        // 21-Day Habit Power (+50% bonus on quiz answers)
         if (state.hasHabitPower()) {
-          boostPct += 0.25;
+          boostPct += 0.50;
         }
 
-        // Lucky 13 (+300% / 4x effective boost on fast answer)
+        // Lucky 13 (+1200% / 13× effective multiplier on fast answer around ~1.3s)
         if (isLucky13) {
-          boostPct += 3.00;
+          boostPct += 12.00;
           this.triggerLucky13();
           state.set('lucky13Count', (state.get('lucky13Count') || 0) + 1);
         }
 
-        // Cap total question multiplier at 10.0x to prevent economy runaway
-        const multiplier = Math.min(1 + boostPct, 10.0);
+        // Cap total question multiplier at 15.0x to prevent runaway while letting Lucky 13 hit 13x
+        const multiplier = Math.min(1 + boostPct, 15.0);
         qCoins = Math.round(baseQ * multiplier);
       }
 
@@ -1307,7 +1302,8 @@ export class App {
     // --- NORMAL QUIZ LOGIC ---
     const totalPlayTime = Date.now() - (gs.totalStartTime || Date.now());
     const bonuses = calculateSetBonuses(gs.level, gs.difficulty, gs.correctCount, totalPlayTime, {
-      comboCarnival: gs.comboCarnivalActive
+      comboCarnival: gs.comboCarnivalActive,
+      hasHabitPower: state.hasHabitPower(),
     });
 
     let totalCoins = gs.setCoins + bonuses.totalBonuses;
@@ -1364,6 +1360,11 @@ export class App {
 
     if (gs.correctCount === 10) {
       state.set('perfectSets', state.get('perfectSets') + 1);
+      if (bonuses.perfectBonus > 0) {
+        setTimeout(() => {
+          this.showToast(`🏆 Perfect Set Bonus! +${bonuses.perfectBonus} coins`, 'gold');
+        }, 600);
+      }
     }
 
     state.update({

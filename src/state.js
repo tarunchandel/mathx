@@ -619,13 +619,10 @@ class StateManager {
     return reward;
   }
 
-  // Calculate coins for completed practice set
+  // Calculate coins for completed practice set (pure base coins, no boosts or bonuses)
   calculatePracticeCoins(level, correctCount) {
-    const basePerCorrect = Math.max(2, (Number(level) || 1) * 3);
-    let coins = correctCount * basePerCorrect;
-    if (correctCount === 10) coins += (Number(level) || 1) * 10; // Perfect drill bonus
-    if (this.hasHabitPower()) coins = Math.round(coins * 1.25);
-    return coins;
+    const basePerCorrect = Math.max(1, (Number(level) || 1) * 2);
+    return correctCount * basePerCorrect;
   }
 
   isCoffeeBoostActive() {
