@@ -281,7 +281,6 @@ export class App {
       if (splash) splash.classList.add('fade-out');
       setTimeout(() => {
         this.render();
-        this.showStreakRewardIfNeeded();
       }, 500);
     }, 1500);
   }
@@ -869,7 +868,7 @@ export class App {
         <div id="mentalMathCardArea"></div>
         <div class="game-coins" id="gameCoins">
           🪙 <span id="setCoins">${gs.setCoins}</span>
-          ${state.hasHabitPower() ? '<span class="habit-power-badge" style="margin-left: 6px;">🔥 5× Habit Power</span>' : ''}
+          ${!gs.isPractice && state.hasHabitPower() ? '<span class="habit-power-badge" style="margin-left: 6px;">🔥 5× Habit Power</span>' : ''}
         </div>
       </div>
       
