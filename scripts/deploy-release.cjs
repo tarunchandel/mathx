@@ -50,12 +50,12 @@ async function deploy() {
     const releaseNotes = [
       {
         language: 'en-US',
-        text: 'MathX v1.0.7: Streak collection refinement and habit power badge display in practice mode.'
+        text: 'MathX v1.0.8: Fixed rapid-tap double-submit issue in quiz mode.'
       }
     ];
 
     const releasePayload = {
-      name: '1.0.7',
+      name: '1.0.8',
       versionCodes: [String(versionCode)],
       status: 'completed',
       releaseNotes: releaseNotes,
@@ -92,7 +92,7 @@ async function deploy() {
       changesNotSentForReview: false,
     });
     console.log(`   Edit committed successfully! Status: ${commitRes.status}`);
-    console.log(`\n🎉 Successfully deployed MathX v1.0.7 (versionCode ${versionCode}) to Google Play Console on internal and closed (alpha) testing tracks!`);
+    console.log(`\n🎉 Successfully deployed MathX v1.0.8 (versionCode ${versionCode}) to Google Play Console on internal and closed (alpha) testing tracks!`);
 
   } catch (err) {
     console.error('Deployment error:', err.message);
