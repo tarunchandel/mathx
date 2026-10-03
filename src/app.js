@@ -581,6 +581,7 @@ export class App {
       safetyPinUsed: false,
       greatEscapeActive: false,
       timeWarpUsed: false,
+      isSubmitting: false,
     };
 
     this.renderGameScreen();
@@ -732,6 +733,7 @@ export class App {
       comboCarnivalActive: !!armed.comboCarnival,
       doubleDipActive: !!armed.doubleDip,
       isShowingExplanation: false,
+      isSubmitting: false,
     };
 
     this.renderGameScreen();
@@ -1005,7 +1007,8 @@ export class App {
 
   submitAnswer() {
     const gs = this.gameState;
-    if (!gs || gs.isShowingExplanation || gs.userAnswer === '' || gs.userAnswer === '-') return;
+    if (!gs || gs.isSubmitting || gs.isShowingExplanation || gs.userAnswer === '' || gs.userAnswer === '-') return;
+    gs.isSubmitting = true;
 
     const q = gs.questions[gs.currentQuestion];
     const answerTime = Date.now() - this.questionStartTime;
@@ -1097,6 +1100,7 @@ export class App {
       if (showMental) {
         this.stopTimer();
         this.renderMentalMathExplanation(q, true, () => {
+          gs.isSubmitting = false;
           gs.currentQuestion++;
           gs.userAnswer = '';
           if (gs.currentQuestion >= 10) {
@@ -1111,6 +1115,7 @@ export class App {
 
       // Move to next question automatically in normal quiz mode
       setTimeout(() => {
+        gs.isSubmitting = false;
         this.stopTimer();
         gs.currentQuestion++;
         gs.userAnswer = '';
@@ -1135,6 +1140,7 @@ export class App {
         if (state.get('haptics')) Haptics.medium();
         this.stopTimer();
         this.renderMentalMathExplanation(q, false, () => {
+          gs.isSubmitting = false;
           gs.currentQuestion++;
           gs.userAnswer = '';
           if (gs.currentQuestion >= 10) {
@@ -1156,6 +1162,7 @@ export class App {
         this.showToast(gs.safetyHitsRemaining > 0 ? `🛡️ Defense absorbed hit! (${gs.safetyHitsRemaining} shield left)` : '🧷 Safety protection used!', 'success');
         
         setTimeout(() => {
+          gs.isSubmitting = false;
           gs.userAnswer = '';
           this.renderGameScreen();
           if (gs.diffConfig.timer) this.startTimer();
